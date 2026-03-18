@@ -1,0 +1,125 @@
+/**
+ * WC B2B Print Manager — Admin Styles
+ * ============================================================
+ */
+
+/* ── General ─────────────────────────────────────────────── */
+.b2b-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.b2b-badge--success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.b2b-badge--warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.b2b-badge--danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* ── Company list table ──────────────────────────────────── */
+.column-b2b_logo img {
+    border-radius: 4px;
+    object-fit: contain;
+}
+
+.b2b-member-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.b2b-member-list li {
+    padding: 4px 0;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.b2b-role-badge {
+    font-size: 10px;
+    background: #e5e7eb;
+    border-radius: 2px;
+    padding: 1px 5px;
+    color: #374151;
+}
+
+/* ── Order approval page ─────────────────────────────────── */
+.wc-b2b-approval-page .b2b-item-list {
+    margin: 0;
+    padding: 0;
+    list-style: disc inside;
+    font-size: 12px;
+}
+
+.wc-b2b-approval-page td,
+.wc-b2b-approval-page th {
+    vertical-align: middle;
+}
+
+.b2b-order-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+/* ── Order edit B2B sidebar ──────────────────────────────── */
+.b2b-order-meta {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    padding: 12px 16px;
+    margin-top: 16px;
+}
+
+.b2b-order-meta h4 {
+    margin: 0 0 10px;
+    font-size: 13px;
+    text-transform: uppercase;
+    color: #6b7280;
+    letter-spacing: 0.05em;
+}
+
+.b2b-order-meta p {
+    margin: 0 0 8px;
+    font-size: 13px;
+}
+
+/* ── Product pricing meta box ────────────────────────────── */
+#b2b-product-pricing .b2b-add-rule {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+    padding: 10px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+}
+
+#b2b-product-pricing .b2b-add-rule label {
+    font-weight: 600;
+    font-size: 13px;
+}
+
+/* ── No data state ───────────────────────────────────────── */
+.b2b-no-data {
+    color: #9ca3af;
+    font-style: italic;
+    padding: 20px 0;
+    text-align: center;
+}
