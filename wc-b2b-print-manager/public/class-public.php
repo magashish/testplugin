@@ -132,13 +132,9 @@ class B2B_Public {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Rebuild the My Account nav for B2B roles.
-	 *
-	 * Company Admin menu: Company Portal | Account Details | Log Out
-	 * Agent menu:         My Dashboard   | Account Details | Log Out
-	 *
-	 * Removed for B2B users: Dashboard (bare), Orders (handled in portal),
-	 * Downloads, Addresses.
+	 * Add the B2B Dashboard link to My Account navigation.
+	 * All standard WooCommerce links (Orders, Downloads, Addresses, etc.)
+	 * are kept — only the B2B Dashboard entry is appended before Log Out.
 	 *
 	 * @param array $items WooCommerce default menu items.
 	 * @return array
@@ -148,36 +144,18 @@ class B2B_Public {
 			return $items;
 		}
 
-		$user_id     = get_current_user_id();
-		$is_b2b      = \WC_B2B\Role_Manager::is_agent( $user_id ) || \WC_B2B\Role_Manager::is_company_admin( $user_id );
-		$is_ca       = \WC_B2B\Role_Manager::is_company_admin( $user_id );
-
-		if ( ! $is_b2b ) {
-			return $items; // Regular customers keep the standard menu.
+		$user_id = get_current_user_id();
+		if ( ! \WC_B2B\Role_Manager::is_agent( $user_id ) && ! \WC_B2B\Role_Manager::is_company_admin( $user_id ) ) {
+			return $items; // Regular customers — leave menu untouched.
 		}
 
-		// Items to always remove for B2B users.
-		$remove = [ 'dashboard', 'downloads', 'edit-address', 'orders' ];
-		foreach ( $remove as $key ) {
-			unset( $items[ $key ] );
-		}
-
-		// Build the clean B2B menu: portal first, account details, then logout.
+		// Insert B2B Dashboard before Log Out.
 		$logout = $items['customer-logout'] ?? null;
 		unset( $items['customer-logout'] );
 
-		$portal_label            = $is_ca
+		$items[ self::ENDPOINT ] = \WC_B2B\Role_Manager::is_company_admin( $user_id )
 			? __( 'Company Portal', 'wc-b2b-print-manager' )
-			: __( 'My Dashboard', 'wc-b2b-print-manager' );
-		$items[ self::ENDPOINT ] = $portal_label;
-
-		// Keep Account Details so users can update password/email.
-		// (Already in $items after the removals above — just ensure it's last.)
-		if ( isset( $items['edit-account'] ) ) {
-			$account = $items['edit-account'];
-			unset( $items['edit-account'] );
-			$items['edit-account'] = $account;
-		}
+			: __( 'B2B Dashboard', 'wc-b2b-print-manager' );
 
 		if ( $logout ) {
 			$items['customer-logout'] = $logout;
