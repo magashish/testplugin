@@ -2,12 +2,20 @@
 /**
  * Frontend Dashboard
  *
- * Renders the B2B Dashboard accessible via the My Account endpoint and the
- * [b2b_dashboard] shortcode.
+ * Renders the branded Company Portal accessible via:
+ *   - /my-account/b2b-dashboard/
+ *   - [b2b_dashboard] shortcode
  *
- * Tabs:
- *   - Agent view:         Orders | Artwork Library
- *   - Company Admin view: Orders | Agents | Artwork Library | Pending Approvals
+ * Tab structure
+ * ─────────────
+ * Company Admin:  Overview | Company Orders | Pending Approvals | Team | Artwork
+ * Agent:          Overview | My Orders      | Artwork
+ *
+ * The Overview tab is a full company portal home:
+ *   - Company logo + name banner
+ *   - "Hello, [name]" greeting
+ *   - Stats cards (role-specific)
+ *   - Quick-action buttons
  *
  * @package WC_B2B\Frontend
  */
@@ -48,7 +56,7 @@ class Dashboard {
 	}
 
 	/**
-	 * Main render method — called by the My Account endpoint and the shortcode.
+	 * Main render method.
 	 */
 	public function render(): void {
 		if ( ! is_user_logged_in() ) {
@@ -68,26 +76,84 @@ class Dashboard {
 	}
 
 	// -------------------------------------------------------------------------
+	// Company Admin Dashboard
+	// -------------------------------------------------------------------------
+
+	/**
+	 * @param int $user_id Company admin user ID.
+	 */
+	private function render_company_admin_dashboard( int $user_id ): void {
+		$company_id = \WC_B2B\Company_Manager::get_user_company_id( $user_id );
+		$active_tab = isset( $_GET['b2b_tab'] ) // phpcs:ignore WordPress.Security.NonceVerification
+			? sanitize_text_field( wp_unslash( $_GET['b2b_tab'] ) ) // phpcs:ignore
+			: 'overview';
+
+		$tabs = [
+			'overview'  => __( 'Overview', 'wc-b2b-print-manager' ),
+			'orders'    => __( 'Company Orders', 'wc-b2b-print-manager' ),
+			'approvals' => __( 'Pending Approvals', 'wc-b2b-print-manager' ),
+			'team'      => __( 'Team', 'wc-b2b-print-manager' ),
+			'artwork'   => __( 'Artwork Library', 'wc-b2b-print-manager' ),
+		];
+
+		// Count pending approvals for the badge.
+		$pending_count = $company_id
+			? count( \WC_B2B\Order_Controller::get_pending_orders_for_company( $company_id ) )
+			: 0;
+		if ( $pending_count > 0 ) {
+			$tabs['approvals'] .= ' <span class="b2b-tab-badge">' . $pending_count . '</span>';
+		}
+		?>
+		<div class="b2b-dashboard b2b-dashboard--company-admin">
+
+			<?php $this->render_company_banner( $company_id, $user_id ); ?>
+			<?php $this->render_tab_nav( $tabs, $active_tab ); ?>
+
+			<div class="b2b-tab-content">
+				<?php if ( 'overview' === $active_tab ) : ?>
+					<?php $this->render_overview_tab_admin( $user_id, $company_id ); ?>
+				<?php elseif ( 'orders' === $active_tab ) : ?>
+					<?php $this->render_company_orders_tab( $company_id ); ?>
+				<?php elseif ( 'approvals' === $active_tab ) : ?>
+					<?php $this->render_approvals_tab( $company_id ); ?>
+				<?php elseif ( 'team' === $active_tab ) : ?>
+					<?php $this->render_team_tab( $company_id ); ?>
+				<?php elseif ( 'artwork' === $active_tab ) : ?>
+					<?php $this->render_artwork_tab( $user_id, true, $company_id ); ?>
+				<?php endif; ?>
+			</div>
+		</div>
+		<?php
+	}
+
+	// -------------------------------------------------------------------------
 	// Agent Dashboard
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Render the agent view.
-	 *
-	 * @param int $user_id Agent's user ID.
+	 * @param int $user_id Agent user ID.
 	 */
 	private function render_agent_dashboard( int $user_id ): void {
-		$active_tab = isset( $_GET['b2b_tab'] ) ? sanitize_text_field( wp_unslash( $_GET['b2b_tab'] ) ) : 'orders'; // phpcs:ignore WordPress.Security.NonceVerification
-		$tabs       = [
-			'orders'  => __( 'My Orders', 'wc-b2b-print-manager' ),
-			'artwork' => __( 'Artwork Library', 'wc-b2b-print-manager' ),
+		$company_id = \WC_B2B\Company_Manager::get_user_company_id( $user_id );
+		$active_tab = isset( $_GET['b2b_tab'] ) // phpcs:ignore WordPress.Security.NonceVerification
+			? sanitize_text_field( wp_unslash( $_GET['b2b_tab'] ) ) // phpcs:ignore
+			: 'overview';
+
+		$tabs = [
+			'overview' => __( 'Overview', 'wc-b2b-print-manager' ),
+			'orders'   => __( 'My Orders', 'wc-b2b-print-manager' ),
+			'artwork'  => __( 'Artwork Library', 'wc-b2b-print-manager' ),
 		];
 		?>
 		<div class="b2b-dashboard b2b-dashboard--agent">
+
+			<?php $this->render_company_banner( $company_id, $user_id ); ?>
 			<?php $this->render_tab_nav( $tabs, $active_tab ); ?>
 
 			<div class="b2b-tab-content">
-				<?php if ( 'orders' === $active_tab ) : ?>
+				<?php if ( 'overview' === $active_tab ) : ?>
+					<?php $this->render_overview_tab_agent( $user_id, $company_id ); ?>
+				<?php elseif ( 'orders' === $active_tab ) : ?>
 					<?php $this->render_orders_tab( $user_id ); ?>
 				<?php elseif ( 'artwork' === $active_tab ) : ?>
 					<?php $this->render_artwork_tab( $user_id ); ?>
@@ -98,48 +164,241 @@ class Dashboard {
 	}
 
 	// -------------------------------------------------------------------------
-	// Company Admin Dashboard
+	// Company Banner (shared)
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Render the company admin view.
+	 * Render the top company branding banner shown on all dashboard views.
 	 *
-	 * @param int $user_id Company admin's user ID.
+	 * @param int $company_id Company post ID (0 if not assigned).
+	 * @param int $user_id    Current user ID.
 	 */
-	private function render_company_admin_dashboard( int $user_id ): void {
-		$company_id = \WC_B2B\Company_Manager::get_user_company_id( $user_id );
-		$active_tab = isset( $_GET['b2b_tab'] ) ? sanitize_text_field( wp_unslash( $_GET['b2b_tab'] ) ) : 'orders'; // phpcs:ignore
-		$tabs       = [
-			'orders'   => __( 'Company Orders', 'wc-b2b-print-manager' ),
-			'approvals' => __( 'Pending Approvals', 'wc-b2b-print-manager' ),
-			'agents'   => __( 'Manage Agents', 'wc-b2b-print-manager' ),
-			'artwork'  => __( 'Artwork Library', 'wc-b2b-print-manager' ),
-		];
+	private function render_company_banner( int $company_id, int $user_id ): void {
+		$user         = get_user_by( 'id', $user_id );
+		$company      = $company_id ? \WC_B2B\Company_Manager::get_company( $company_id ) : null;
+		$company_name = $company ? $company->post_title : __( 'Company Portal', 'wc-b2b-print-manager' );
+		$logo_id      = $company_id ? get_post_thumbnail_id( $company_id ) : 0;
+		$logo_url     = $logo_id ? wp_get_attachment_image_url( $logo_id, [ 120, 120 ] ) : '';
+		$role_label   = \WC_B2B\Role_Manager::get_role_label( $user_id );
 		?>
-		<div class="b2b-dashboard b2b-dashboard--company-admin">
-			<div class="b2b-dashboard-header">
-				<?php if ( $company_id ) : ?>
-					<?php $thumb = get_the_post_thumbnail( $company_id, [ 60, 60 ] ); ?>
-					<?php if ( $thumb ) : ?>
-						<div class="b2b-company-logo"><?php echo $thumb; ?></div>
-					<?php endif; ?>
-					<h2><?php echo esc_html( get_the_title( $company_id ) ); ?></h2>
+		<div class="b2b-company-banner">
+			<div class="b2b-company-banner__logo">
+				<?php if ( $logo_url ) : ?>
+					<img src="<?php echo esc_url( $logo_url ); ?>"
+						 alt="<?php echo esc_attr( $company_name ); ?>"
+						 class="b2b-company-logo-img" />
+				<?php else : ?>
+					<div class="b2b-company-logo-placeholder">
+						<?php echo esc_html( mb_substr( $company_name, 0, 2 ) ); ?>
+					</div>
 				<?php endif; ?>
 			</div>
-
-			<?php $this->render_tab_nav( $tabs, $active_tab ); ?>
-
-			<div class="b2b-tab-content">
-				<?php if ( 'orders' === $active_tab ) : ?>
-					<?php $this->render_company_orders_tab( $company_id ); ?>
-				<?php elseif ( 'approvals' === $active_tab ) : ?>
-					<?php $this->render_approvals_tab( $company_id ); ?>
-				<?php elseif ( 'agents' === $active_tab ) : ?>
-					<?php $this->render_agents_tab( $company_id ); ?>
-				<?php elseif ( 'artwork' === $active_tab ) : ?>
-					<?php $this->render_artwork_tab( $user_id, true, $company_id ); ?>
-				<?php endif; ?>
+			<div class="b2b-company-banner__info">
+				<h1 class="b2b-company-name"><?php echo esc_html( $company_name ); ?></h1>
+				<p class="b2b-banner-greeting">
+					<?php
+					printf(
+						/* translators: 1: user display name, 2: role label */
+						esc_html__( 'Welcome back, %1$s — %2$s', 'wc-b2b-print-manager' ),
+						'<strong>' . esc_html( $user ? $user->display_name : '' ) . '</strong>',
+						'<span class="b2b-role-chip">' . esc_html( $role_label ) . '</span>'
+					);
+					?>
+				</p>
 			</div>
+			<div class="b2b-company-banner__actions">
+				<a href="<?php echo esc_url( get_permalink( wc_get_page_id( 'shop' ) ) ); ?>"
+				   class="b2b-btn b2b-btn--primary">
+					<?php esc_html_e( '+ New Order', 'wc-b2b-print-manager' ); ?>
+				</a>
+			</div>
+		</div>
+		<?php
+	}
+
+	// -------------------------------------------------------------------------
+	// Tab: Overview — Company Admin
+	// -------------------------------------------------------------------------
+
+	/**
+	 * @param int $user_id    Company admin user ID.
+	 * @param int $company_id Company post ID.
+	 */
+	private function render_overview_tab_admin( int $user_id, int $company_id ): void {
+		// Gather stats.
+		$users         = $company_id ? \WC_B2B\Company_Manager::get_company_users( $company_id ) : [];
+		$user_ids      = array_map( fn( $u ) => $u->ID, $users );
+		$all_orders    = empty( $user_ids ) ? [] : wc_get_orders( [ 'customer' => $user_ids, 'limit' => -1 ] );
+		$pending       = $company_id ? \WC_B2B\Order_Controller::get_pending_orders_for_company( $company_id ) : [];
+		$agents        = array_filter( $users, fn( $u ) => \WC_B2B\Role_Manager::is_agent( $u->ID ) );
+
+		// Most recent order.
+		$latest_order  = ! empty( $all_orders ) ? $all_orders[0] : null;
+
+		$stats = [
+			[
+				'icon'  => '📦',
+				'value' => count( $all_orders ),
+				'label' => __( 'Total Orders', 'wc-b2b-print-manager' ),
+				'link'  => add_query_arg( 'b2b_tab', 'orders', remove_query_arg( 'b2b_tab' ) ),
+			],
+			[
+				'icon'  => '⏳',
+				'value' => count( $pending ),
+				'label' => __( 'Pending Approval', 'wc-b2b-print-manager' ),
+				'link'  => add_query_arg( 'b2b_tab', 'approvals', remove_query_arg( 'b2b_tab' ) ),
+				'alert' => count( $pending ) > 0,
+			],
+			[
+				'icon'  => '👥',
+				'value' => count( $agents ),
+				'label' => __( 'Agents', 'wc-b2b-print-manager' ),
+				'link'  => add_query_arg( 'b2b_tab', 'team', remove_query_arg( 'b2b_tab' ) ),
+			],
+			[
+				'icon'  => '🖼️',
+				'value' => count( ( new \WC_B2B\Artwork_Manager() )->get_company_artwork( $company_id ) ),
+				'label' => __( 'Artwork Files', 'wc-b2b-print-manager' ),
+				'link'  => add_query_arg( 'b2b_tab', 'artwork', remove_query_arg( 'b2b_tab' ) ),
+			],
+		];
+
+		$this->render_stats_grid( $stats );
+
+		// Recent activity.
+		if ( ! empty( $all_orders ) ) {
+			$recent = array_slice( $all_orders, 0, 5 );
+			?>
+			<div class="b2b-overview-section">
+				<h3><?php esc_html_e( 'Recent Orders', 'wc-b2b-print-manager' ); ?></h3>
+				<?php
+				$orders            = $recent;
+				$show_agent_column = true;
+				include WC_B2B_PLUGIN_DIR . 'public/views/order-list.php';
+				?>
+			</div>
+			<?php
+		}
+
+		// Pending approvals callout.
+		if ( count( $pending ) > 0 ) {
+			?>
+			<div class="b2b-overview-callout b2b-overview-callout--warning">
+				<strong>
+					<?php
+					printf(
+						/* translators: %d: count */
+						esc_html( _n(
+							'%d order is awaiting your approval.',
+							'%d orders are awaiting your approval.',
+							count( $pending ),
+							'wc-b2b-print-manager'
+						) ),
+						count( $pending )
+					);
+					?>
+				</strong>
+				<a href="<?php echo esc_url( add_query_arg( 'b2b_tab', 'approvals', remove_query_arg( 'b2b_tab' ) ) ); ?>"
+				   class="b2b-btn b2b-btn--sm">
+					<?php esc_html_e( 'Review Now', 'wc-b2b-print-manager' ); ?>
+				</a>
+			</div>
+			<?php
+		}
+	}
+
+	// -------------------------------------------------------------------------
+	// Tab: Overview — Agent
+	// -------------------------------------------------------------------------
+
+	/**
+	 * @param int $user_id    Agent user ID.
+	 * @param int $company_id Company post ID.
+	 */
+	private function render_overview_tab_agent( int $user_id, int $company_id ): void {
+		$all_orders = wc_get_orders( [ 'customer' => $user_id, 'limit' => -1 ] );
+		$processing = wc_get_orders( [ 'customer' => $user_id, 'status' => 'processing', 'limit' => -1 ] );
+		$pending_ap = wc_get_orders( [ 'customer' => $user_id, 'status' => 'wc-pending-approval', 'limit' => -1 ] );
+
+		$latest_order = ! empty( $all_orders ) ? $all_orders[0] : null;
+
+		$stats = [
+			[
+				'icon'  => '📦',
+				'value' => count( $all_orders ),
+				'label' => __( 'My Orders', 'wc-b2b-print-manager' ),
+				'link'  => add_query_arg( 'b2b_tab', 'orders', remove_query_arg( 'b2b_tab' ) ),
+			],
+			[
+				'icon'  => '✅',
+				'value' => count( $processing ),
+				'label' => __( 'In Processing', 'wc-b2b-print-manager' ),
+				'link'  => add_query_arg( 'b2b_tab', 'orders', remove_query_arg( 'b2b_tab' ) ),
+			],
+			[
+				'icon'  => '⏳',
+				'value' => count( $pending_ap ),
+				'label' => __( 'Pending Approval', 'wc-b2b-print-manager' ),
+				'link'  => add_query_arg( 'b2b_tab', 'orders', remove_query_arg( 'b2b_tab' ) ),
+				'alert' => count( $pending_ap ) > 0,
+			],
+			[
+				'icon'  => '🗓️',
+				'value' => $latest_order
+					? wc_format_datetime( $latest_order->get_date_created(), get_option( 'date_format' ) )
+					: '—',
+				'label' => __( 'Last Order', 'wc-b2b-print-manager' ),
+				'link'  => $latest_order ? $latest_order->get_view_order_url() : '#',
+			],
+		];
+
+		$this->render_stats_grid( $stats );
+
+		// Recent orders snippet.
+		if ( ! empty( $all_orders ) ) {
+			$recent = array_slice( $all_orders, 0, 5 );
+			?>
+			<div class="b2b-overview-section">
+				<h3><?php esc_html_e( 'Recent Orders', 'wc-b2b-print-manager' ); ?></h3>
+				<?php
+				$orders = $recent;
+				include WC_B2B_PLUGIN_DIR . 'public/views/order-list.php';
+				?>
+			</div>
+			<?php
+		} else {
+			?>
+			<div class="b2b-overview-empty">
+				<p><?php esc_html_e( 'You haven\'t placed any orders yet.', 'wc-b2b-print-manager' ); ?></p>
+				<a href="<?php echo esc_url( get_permalink( wc_get_page_id( 'shop' ) ) ); ?>"
+				   class="b2b-btn b2b-btn--primary">
+					<?php esc_html_e( 'Browse Products', 'wc-b2b-print-manager' ); ?>
+				</a>
+			</div>
+			<?php
+		}
+	}
+
+	// -------------------------------------------------------------------------
+	// Stats grid helper
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Render a row of KPI stat cards.
+	 *
+	 * @param array $stats Each item: [icon, value, label, link, alert?]
+	 */
+	private function render_stats_grid( array $stats ): void {
+		?>
+		<div class="b2b-stats-grid">
+			<?php foreach ( $stats as $stat ) : ?>
+				<a href="<?php echo esc_url( $stat['link'] ?? '#' ); ?>"
+				   class="b2b-stat-card <?php echo ! empty( $stat['alert'] ) ? 'b2b-stat-card--alert' : ''; ?>">
+					<span class="b2b-stat-icon"><?php echo esc_html( $stat['icon'] ); ?></span>
+					<span class="b2b-stat-value"><?php echo esc_html( (string) $stat['value'] ); ?></span>
+					<span class="b2b-stat-label"><?php echo esc_html( $stat['label'] ); ?></span>
+				</a>
+			<?php endforeach; ?>
 		</div>
 		<?php
 	}
@@ -148,11 +407,6 @@ class Dashboard {
 	// Tab: Orders (Agent)
 	// -------------------------------------------------------------------------
 
-	/**
-	 * Render agent's own orders list.
-	 *
-	 * @param int $user_id Agent user ID.
-	 */
 	private function render_orders_tab( int $user_id ): void {
 		$orders = wc_get_orders(
 			[
@@ -162,7 +416,6 @@ class Dashboard {
 				'order'    => 'DESC',
 			]
 		);
-
 		include WC_B2B_PLUGIN_DIR . 'public/views/order-list.php';
 	}
 
@@ -170,11 +423,6 @@ class Dashboard {
 	// Tab: Orders (Company Admin)
 	// -------------------------------------------------------------------------
 
-	/**
-	 * Render all company orders.
-	 *
-	 * @param int $company_id Company post ID.
-	 */
 	private function render_company_orders_tab( int $company_id ): void {
 		$users    = \WC_B2B\Company_Manager::get_company_users( $company_id );
 		$user_ids = array_map( fn( $u ) => $u->ID, $users );
@@ -195,17 +443,14 @@ class Dashboard {
 	// Tab: Pending Approvals
 	// -------------------------------------------------------------------------
 
-	/**
-	 * Render orders awaiting company admin approval.
-	 *
-	 * @param int $company_id Company post ID.
-	 */
 	private function render_approvals_tab( int $company_id ): void {
 		$orders = \WC_B2B\Order_Controller::get_pending_orders_for_company( $company_id );
 		?>
 		<div class="b2b-approvals-tab">
 			<?php if ( empty( $orders ) ) : ?>
-				<p><?php esc_html_e( 'No orders are currently awaiting approval.', 'wc-b2b-print-manager' ); ?></p>
+				<div class="b2b-overview-empty">
+					<p><?php esc_html_e( 'No orders are currently awaiting approval. 🎉', 'wc-b2b-print-manager' ); ?></p>
+				</div>
 			<?php else : ?>
 				<table class="b2b-table b2b-approvals-table">
 					<thead>
@@ -229,10 +474,12 @@ class Dashboard {
 								<td><?php echo $agent ? esc_html( $agent->display_name ) : '—'; ?></td>
 								<td><?php echo wp_kses_post( $order->get_formatted_order_total() ); ?></td>
 								<td>
-									<button class="b2b-btn b2b-btn--primary b2b-approve-order" data-order="<?php echo esc_attr( $order->get_id() ); ?>">
+									<button class="b2b-btn b2b-btn--primary b2b-btn--sm b2b-approve-order"
+											data-order="<?php echo esc_attr( $order->get_id() ); ?>">
 										<?php esc_html_e( 'Approve', 'wc-b2b-print-manager' ); ?>
 									</button>
-									<button class="b2b-btn b2b-btn--danger b2b-reject-order" data-order="<?php echo esc_attr( $order->get_id() ); ?>">
+									<button class="b2b-btn b2b-btn--danger b2b-btn--sm b2b-reject-order"
+											data-order="<?php echo esc_attr( $order->get_id() ); ?>">
 										<?php esc_html_e( 'Reject', 'wc-b2b-print-manager' ); ?>
 									</button>
 								</td>
@@ -246,63 +493,43 @@ class Dashboard {
 	}
 
 	// -------------------------------------------------------------------------
-	// Tab: Agents Management
+	// Tab: Team (replaces Agents — shows all members, not just agents)
 	// -------------------------------------------------------------------------
 
-	/**
-	 * Render agent management tab.
-	 *
-	 * @param int $company_id Company post ID.
-	 */
-	private function render_agents_tab( int $company_id ): void {
-		$agents        = \WC_B2B\Company_Manager::get_company_users( $company_id, 'agent' );
-		$manage_nonce  = wp_create_nonce( 'b2b_manage_agents' );
+	private function render_team_tab( int $company_id ): void {
+		$members      = \WC_B2B\Company_Manager::get_company_users( $company_id );
+		$manage_nonce = wp_create_nonce( 'b2b_manage_agents' );
 		?>
-		<div class="b2b-agents-tab">
-			<h3><?php esc_html_e( 'Company Agents', 'wc-b2b-print-manager' ); ?></h3>
+		<div class="b2b-team-tab">
+			<h3><?php esc_html_e( 'Team Members', 'wc-b2b-print-manager' ); ?></h3>
 
-			<?php if ( empty( $agents ) ) : ?>
-				<p><?php esc_html_e( 'No agents are assigned to your company yet.', 'wc-b2b-print-manager' ); ?></p>
+			<?php if ( empty( $members ) ) : ?>
+				<p class="b2b-no-data"><?php esc_html_e( 'No team members yet.', 'wc-b2b-print-manager' ); ?></p>
 			<?php else : ?>
-				<table class="b2b-table">
-					<thead>
-						<tr>
-							<th><?php esc_html_e( 'Name', 'wc-b2b-print-manager' ); ?></th>
-							<th><?php esc_html_e( 'Email', 'wc-b2b-print-manager' ); ?></th>
-							<th><?php esc_html_e( 'Registered', 'wc-b2b-print-manager' ); ?></th>
-							<th><?php esc_html_e( 'Actions', 'wc-b2b-print-manager' ); ?></th>
-						</tr>
-					</thead>
-					<tbody>
-						<?php foreach ( $agents as $agent ) : ?>
-							<tr>
-								<td><?php echo esc_html( $agent->display_name ); ?></td>
-								<td><?php echo esc_html( $agent->user_email ); ?></td>
-								<td><?php echo esc_html( date_i18n( get_option( 'date_format' ), strtotime( $agent->user_registered ) ) ); ?></td>
-								<td>
-									<button class="b2b-btn b2b-btn--danger b2b-remove-agent"
-											data-user="<?php echo esc_attr( $agent->ID ); ?>"
-											data-nonce="<?php echo esc_attr( $manage_nonce ); ?>">
-										<?php esc_html_e( 'Remove', 'wc-b2b-print-manager' ); ?>
-									</button>
-								</td>
-							</tr>
-						<?php endforeach; ?>
-					</tbody>
-				</table>
+				<div class="b2b-team-grid">
+					<?php foreach ( $members as $member ) : ?>
+						<div class="b2b-team-card">
+							<div class="b2b-team-avatar">
+								<?php echo get_avatar( $member->ID, 56 ); ?>
+							</div>
+							<div class="b2b-team-info">
+								<strong><?php echo esc_html( $member->display_name ); ?></strong>
+								<span class="b2b-role-chip">
+									<?php echo esc_html( \WC_B2B\Role_Manager::get_role_label( $member->ID ) ); ?>
+								</span>
+								<small><?php echo esc_html( $member->user_email ); ?></small>
+							</div>
+							<div class="b2b-team-actions">
+								<button class="b2b-btn b2b-btn--sm b2b-btn--danger b2b-remove-agent"
+										data-user="<?php echo esc_attr( $member->ID ); ?>"
+										data-nonce="<?php echo esc_attr( $manage_nonce ); ?>">
+									<?php esc_html_e( 'Remove', 'wc-b2b-print-manager' ); ?>
+								</button>
+							</div>
+						</div>
+					<?php endforeach; ?>
+				</div>
 			<?php endif; ?>
-
-			<hr />
-			<h4><?php esc_html_e( 'Assign Existing User as Agent', 'wc-b2b-print-manager' ); ?></h4>
-			<div class="b2b-assign-agent-form">
-				<input type="text" id="b2b-agent-email"
-					   placeholder="<?php esc_attr_e( 'Enter user email address…', 'wc-b2b-print-manager' ); ?>" />
-				<button class="b2b-btn b2b-btn--primary" id="b2b-assign-agent"
-						data-nonce="<?php echo esc_attr( $manage_nonce ); ?>">
-					<?php esc_html_e( 'Assign', 'wc-b2b-print-manager' ); ?>
-				</button>
-				<span class="b2b-assign-agent-msg"></span>
-			</div>
 		</div>
 		<?php
 	}
@@ -311,13 +538,6 @@ class Dashboard {
 	// Tab: Artwork Library
 	// -------------------------------------------------------------------------
 
-	/**
-	 * Render artwork library tab.
-	 *
-	 * @param int  $user_id    Current user ID.
-	 * @param bool $is_company Whether showing company-wide artwork.
-	 * @param int  $company_id Company post ID (when $is_company is true).
-	 */
 	private function render_artwork_tab( int $user_id, bool $is_company = false, int $company_id = 0 ): void {
 		$artwork_manager = new \WC_B2B\Artwork_Manager();
 		$artwork_items   = $is_company && $company_id
@@ -329,9 +549,7 @@ class Dashboard {
 		<div class="b2b-artwork-tab" data-nonce="<?php echo esc_attr( $nonce ); ?>">
 			<h3><?php esc_html_e( 'Artwork Library', 'wc-b2b-print-manager' ); ?></h3>
 
-			<!-- Upload new artwork -->
 			<div class="b2b-artwork-upload-section">
-				<h4><?php esc_html_e( 'Upload New Artwork', 'wc-b2b-print-manager' ); ?></h4>
 				<input type="text" id="b2b-artwork-title"
 					   placeholder="<?php esc_attr_e( 'Artwork title…', 'wc-b2b-print-manager' ); ?>" />
 				<input type="file" id="b2b-artwork-upload-file"
@@ -342,7 +560,6 @@ class Dashboard {
 				<span class="b2b-upload-status"></span>
 			</div>
 
-			<!-- Existing artwork -->
 			<div class="b2b-artwork-grid" id="b2b-artwork-grid">
 				<?php if ( empty( $artwork_items ) ) : ?>
 					<p class="b2b-no-data"><?php esc_html_e( 'No artwork in your library yet.', 'wc-b2b-print-manager' ); ?></p>
@@ -386,19 +603,20 @@ class Dashboard {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Render tab navigation.
+	 * Render tab navigation bar.
 	 *
-	 * @param array  $tabs       ['slug' => 'Label'] pairs.
-	 * @param string $active_tab Currently active tab slug.
+	 * @param array  $tabs       ['slug' => 'Label'] — label may contain HTML (badge).
+	 * @param string $active_tab Currently active slug.
 	 */
 	private function render_tab_nav( array $tabs, string $active_tab ): void {
 		$base_url = remove_query_arg( 'b2b_tab' );
 		?>
-		<nav class="b2b-tabs">
+		<nav class="b2b-tabs" role="tablist">
 			<?php foreach ( $tabs as $slug => $label ) : ?>
 				<a href="<?php echo esc_url( add_query_arg( 'b2b_tab', $slug, $base_url ) ); ?>"
-				   class="b2b-tab <?php echo $active_tab === $slug ? 'b2b-tab--active' : ''; ?>">
-					<?php echo esc_html( $label ); ?>
+				   class="b2b-tab <?php echo $active_tab === $slug ? 'b2b-tab--active' : ''; ?>"
+				   role="tab">
+					<?php echo wp_kses( $label, [ 'span' => [ 'class' => [] ] ] ); ?>
 				</a>
 			<?php endforeach; ?>
 		</nav>
@@ -412,7 +630,7 @@ class Dashboard {
 		echo '<p>' . wp_kses_post(
 			sprintf(
 				/* translators: %s: login URL */
-				__( 'Please <a href="%s">log in</a> to access the B2B Dashboard.', 'wc-b2b-print-manager' ),
+				__( 'Please <a href="%s">log in</a> to access the Company Portal.', 'wc-b2b-print-manager' ),
 				esc_url( wp_login_url( get_permalink() ) )
 			)
 		) . '</p>';

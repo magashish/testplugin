@@ -10,22 +10,199 @@
     box-sizing: border-box;
 }
 
-/* ── Dashboard header ────────────────────────────────────── */
-.b2b-dashboard-header {
+/* ── Company Banner ──────────────────────────────────────── */
+.b2b-company-banner {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 24px 28px;
+    background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+    border-radius: 10px;
+    margin-bottom: 24px;
+    color: #fff;
+    flex-wrap: wrap;
+}
+
+.b2b-company-banner__logo {
+    flex-shrink: 0;
+}
+
+.b2b-company-logo-img {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    object-fit: contain;
+    background: rgba(255,255,255,0.15);
+    padding: 4px;
+}
+
+/* Letter-avatar fallback when no logo is uploaded */
+.b2b-company-logo-placeholder {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.b2b-company-banner__info {
+    flex: 1;
+    min-width: 0;
+}
+
+.b2b-company-name {
+    margin: 0 0 6px;
+    font-size: 24px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.2;
+}
+
+.b2b-banner-greeting {
+    margin: 0;
+    font-size: 14px;
+    color: rgba(255,255,255,0.85);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.b2b-banner-greeting strong {
+    color: #fff;
+}
+
+/* Role chip inside banner */
+.b2b-role-chip {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+    vertical-align: middle;
+}
+
+.b2b-company-banner__actions {
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+/* ── Stats Grid ──────────────────────────────────────────── */
+.b2b-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+}
+
+.b2b-stat-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 20px 12px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #111827;
+    transition: box-shadow 0.15s, border-color 0.15s, transform 0.1s;
+    text-align: center;
+}
+
+.b2b-stat-card:hover {
+    box-shadow: 0 4px 16px rgba(37,99,235,0.12);
+    border-color: #93c5fd;
+    transform: translateY(-2px);
+    color: #111827;
+    text-decoration: none;
+}
+
+.b2b-stat-card--alert {
+    border-color: #fbbf24;
+    background: #fffbeb;
+}
+
+.b2b-stat-card--alert:hover {
+    border-color: #f59e0b;
+    box-shadow: 0 4px 16px rgba(245,158,11,0.15);
+}
+
+.b2b-stat-icon {
+    font-size: 28px;
+    line-height: 1;
+}
+
+.b2b-stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1d4ed8;
+    line-height: 1;
+}
+
+.b2b-stat-card--alert .b2b-stat-value {
+    color: #b45309;
+}
+
+.b2b-stat-label {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ── Overview sections ───────────────────────────────────── */
+.b2b-overview-section {
+    margin-top: 28px;
+}
+
+.b2b-overview-section h3 {
+    margin: 0 0 14px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #374151;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.b2b-overview-callout {
     display: flex;
     align-items: center;
     gap: 14px;
-    margin-bottom: 20px;
+    padding: 14px 18px;
+    border-radius: 8px;
+    margin-top: 20px;
+    flex-wrap: wrap;
 }
 
-.b2b-dashboard-header h2 {
-    margin: 0;
-    font-size: 22px;
+.b2b-overview-callout--warning {
+    background: #fffbeb;
+    border: 1px solid #fbbf24;
+    color: #92400e;
 }
 
-.b2b-company-logo img {
-    border-radius: 6px;
-    object-fit: contain;
+.b2b-overview-empty {
+    text-align: center;
+    padding: 48px 20px;
+    color: #9ca3af;
+}
+
+.b2b-overview-empty p {
+    margin: 0 0 16px;
+    font-size: 15px;
 }
 
 /* ── Tabs ────────────────────────────────────────────────── */
@@ -35,7 +212,10 @@
     border-bottom: 2px solid #e5e7eb;
     margin-bottom: 24px;
     overflow-x: auto;
+    scrollbar-width: none;
 }
+
+.b2b-tabs::-webkit-scrollbar { display: none; }
 
 .b2b-tab {
     padding: 10px 18px;
@@ -47,45 +227,71 @@
     border-bottom: 2px solid transparent;
     margin-bottom: -2px;
     transition: color 0.15s, border-color 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .b2b-tab:hover {
     color: #111827;
+    text-decoration: none;
 }
 
 .b2b-tab--active {
     color: #2563eb;
     border-bottom-color: #2563eb;
+    font-weight: 600;
+}
+
+/* Numeric badge on tab label */
+.b2b-tab-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 10px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
 }
 
 /* ── Buttons ─────────────────────────────────────────────── */
 .b2b-btn {
-    display: inline-block;
-    padding: 8px 16px;
-    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 9px 18px;
+    border-radius: 6px;
     border: 1px solid transparent;
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
     text-decoration: none;
-    transition: background 0.15s, border-color 0.15s;
+    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
     line-height: 1.4;
+    white-space: nowrap;
 }
 
 .b2b-btn--sm {
-    padding: 4px 10px;
+    padding: 5px 12px;
     font-size: 12px;
 }
 
 .b2b-btn--primary {
     background: #2563eb;
-    color: #fff;
+    color: #fff !important;
     border-color: #2563eb;
 }
 
 .b2b-btn--primary:hover {
     background: #1d4ed8;
-    color: #fff;
+    border-color: #1d4ed8;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+    text-decoration: none;
 }
 
 .b2b-btn--secondary {
@@ -127,14 +333,13 @@
     background: #f9fafb;
     font-weight: 600;
     color: #374151;
-    font-size: 12px;
+    font-size: 11px;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.05em;
 }
 
-.b2b-table tr:hover td {
-    background: #f9fafb;
-}
+.b2b-table tr:last-child td { border-bottom: none; }
+.b2b-table tr:hover td { background: #f9fafb; }
 
 .b2b-order-actions {
     display: flex;
@@ -145,24 +350,79 @@
 /* ── Order status badges ─────────────────────────────────── */
 .b2b-status {
     display: inline-block;
-    padding: 2px 8px;
-    border-radius: 3px;
+    padding: 3px 10px;
+    border-radius: 20px;
     font-size: 11px;
     font-weight: 600;
+    text-transform: capitalize;
 }
 
-.b2b-status--processing    { background: #d1fae5; color: #065f46; }
-.b2b-status--pending       { background: #fef3c7; color: #92400e; }
+.b2b-status--processing      { background: #d1fae5; color: #065f46; }
+.b2b-status--pending         { background: #fef3c7; color: #92400e; }
 .b2b-status--pending-approval { background: #ede9fe; color: #4c1d95; }
-.b2b-status--completed     { background: #e0f2fe; color: #0c4a6e; }
-.b2b-status--cancelled     { background: #fee2e2; color: #991b1b; }
+.b2b-status--completed       { background: #dbeafe; color: #1e40af; }
+.b2b-status--cancelled       { background: #fee2e2; color: #991b1b; }
+.b2b-status--on-hold         { background: #f3f4f6; color: #374151; }
+
+/* ── Team grid ───────────────────────────────────────────── */
+.b2b-team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+}
+
+.b2b-team-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    transition: box-shadow 0.15s;
+}
+
+.b2b-team-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.b2b-team-avatar img {
+    border-radius: 50%;
+    display: block;
+}
+
+.b2b-team-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.b2b-team-info strong {
+    font-size: 14px;
+    color: #111827;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.b2b-team-info small {
+    font-size: 12px;
+    color: #9ca3af;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.b2b-team-actions { flex-shrink: 0; }
 
 /* ── Artwork Library ─────────────────────────────────────── */
 .b2b-artwork-upload-section {
     background: #f9fafb;
-    border: 1px dashed #d1d5db;
-    border-radius: 6px;
-    padding: 16px;
+    border: 2px dashed #d1d5db;
+    border-radius: 8px;
+    padding: 18px;
     margin-bottom: 24px;
     display: flex;
     align-items: center;
@@ -171,37 +431,40 @@
 }
 
 .b2b-artwork-upload-section input[type="text"] {
-    padding: 6px 10px;
+    padding: 7px 12px;
     border: 1px solid #d1d5db;
-    border-radius: 4px;
+    border-radius: 6px;
     font-size: 14px;
+    flex: 1;
+    min-width: 160px;
 }
 
 .b2b-upload-status {
     font-size: 13px;
     color: #059669;
+    font-style: italic;
 }
 
 .b2b-artwork-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: 16px;
 }
 
 .b2b-artwork-item {
     border: 1px solid #e5e7eb;
-    border-radius: 6px;
+    border-radius: 8px;
     overflow: hidden;
     background: #fff;
     transition: box-shadow 0.15s;
 }
 
 .b2b-artwork-item:hover {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 3px 12px rgba(0,0,0,0.1);
 }
 
 .b2b-artwork-preview {
-    height: 120px;
+    height: 110px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -215,36 +478,30 @@
     object-fit: cover;
 }
 
-.b2b-artwork-icon {
-    font-size: 48px;
-    color: #9ca3af;
-}
+.b2b-artwork-icon { font-size: 44px; color: #9ca3af; }
 
 .b2b-artwork-info {
     padding: 8px 10px 4px;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 3px;
 }
 
 .b2b-artwork-info strong {
-    font-size: 13px;
+    font-size: 12px;
     color: #111827;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.b2b-artwork-info small {
-    font-size: 11px;
-    color: #6b7280;
-}
+.b2b-artwork-info small { font-size: 11px; color: #6b7280; }
 
 .b2b-artwork-type {
     display: inline-block;
     font-size: 10px;
     background: #e5e7eb;
-    border-radius: 2px;
+    border-radius: 3px;
     padding: 1px 5px;
     color: #374151;
     width: fit-content;
@@ -263,21 +520,45 @@
     padding: 16px;
     background: #f9fafb;
     border: 1px solid #e5e7eb;
-    border-radius: 6px;
+    border-radius: 8px;
 }
 
-.b2b-artwork-upload-wrap h4 {
-    margin: 0 0 10px;
+.b2b-artwork-upload-wrap h4 { margin: 0 0 10px; font-size: 15px; }
+.b2b-upload-hint { font-size: 12px; color: #6b7280; margin: 6px 0; }
+
+/* ── Checkout notice ─────────────────────────────────────── */
+.b2b-checkout-notice { margin-bottom: 16px; }
+
+/* ── Portal redirect fallback notice ────────────────────── */
+.b2b-portal-redirect-notice {
+    padding: 20px 0;
+}
+
+.b2b-welcome-line {
     font-size: 15px;
+    margin-bottom: 12px;
 }
 
-.b2b-upload-hint {
-    font-size: 12px;
-    color: #6b7280;
-    margin: 6px 0;
+/* ── Role badge (used in sidebar, order table) ───────────── */
+.b2b-role-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    background: #e5e7eb;
+    color: #374151;
 }
 
-/* ── Agent management ────────────────────────────────────── */
+/* ── No-data placeholder ─────────────────────────────────── */
+.b2b-no-data {
+    color: #9ca3af;
+    font-style: italic;
+    padding: 30px 0;
+    text-align: center;
+}
+
+/* ── Assign agent form (team tab) ────────────────────────── */
 .b2b-assign-agent-form {
     display: flex;
     align-items: center;
@@ -287,44 +568,61 @@
 }
 
 .b2b-assign-agent-form input[type="text"] {
-    padding: 6px 10px;
+    padding: 7px 12px;
     border: 1px solid #d1d5db;
-    border-radius: 4px;
+    border-radius: 6px;
     font-size: 14px;
     min-width: 260px;
 }
 
-.b2b-assign-agent-msg {
-    font-size: 13px;
-}
-
-/* ── No-data state ───────────────────────────────────────── */
-.b2b-no-data {
-    color: #9ca3af;
-    font-style: italic;
-    padding: 30px 0;
-    text-align: center;
-}
-
-/* ── Checkout notice ─────────────────────────────────────── */
-.b2b-checkout-notice {
-    margin-bottom: 16px;
-}
+.b2b-assign-agent-msg { font-size: 13px; }
 
 /* ── Responsive ──────────────────────────────────────────── */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+    .b2b-company-banner {
+        padding: 18px;
+        gap: 14px;
+    }
+
+    .b2b-company-name { font-size: 18px; }
+
+    .b2b-company-banner__actions {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .b2b-company-banner__actions .b2b-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .b2b-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
     .b2b-artwork-grid {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .b2b-team-grid {
+        grid-template-columns: 1fr;
     }
 
     .b2b-table th,
     .b2b-table td {
         padding: 8px;
-        font-size: 13px;
+        font-size: 12px;
     }
 
     .b2b-assign-agent-form input[type="text"] {
         min-width: unset;
         width: 100%;
     }
+}
+
+@media (max-width: 480px) {
+    .b2b-stats-grid { grid-template-columns: 1fr 1fr; }
+    .b2b-company-logo-img,
+    .b2b-company-logo-placeholder { width: 56px; height: 56px; }
+    .b2b-company-name { font-size: 16px; }
 }
