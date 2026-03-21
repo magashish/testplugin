@@ -123,3 +123,61 @@
     padding: 20px 0;
     text-align: center;
 }
+
+/* ── Company members panel ───────────────────────────────── */
+.b2b-members-panel h4 {
+    margin: 0 0 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1d2327;
+}
+
+.b2b-members-table td,
+.b2b-members-table th {
+    vertical-align: middle;
+}
+
+.b2b-members-forms {
+    align-items: start;
+}
+
+/* Stack columns on narrow screens */
+@media ( max-width: 900px ) {
+    .b2b-members-forms {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+.b2b-add-existing-user,
+.b2b-create-new-user {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    padding: 14px 16px;
+}
+
+.b2b-add-existing-user p.description,
+.b2b-create-new-user p.description {
+    color: #6b7280;
+    font-size: 12px;
+    margin: 0 0 10px;
+}
+
+/* Tighten the inline form tables */
+.b2b-inline-form th,
+.b2b-inline-form td {
+    padding: 5px 8px 5px 0;
+}
+
+.b2b-inline-form th {
+    width: 100px;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.b2b-form-msg {
+    display: inline-block;
+    margin-left: 8px;
+    font-size: 12px;
+    font-style: italic;
+}

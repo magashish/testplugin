@@ -131,13 +131,18 @@ class Admin {
 			'wc-b2b-admin',
 			'wcB2BAdmin',
 			[
-				'ajax_url' => admin_url( 'admin-ajax.php' ),
-				'nonce'    => wp_create_nonce( 'b2b_order_action' ),
-				'i18n'     => [
-					'confirm_approve' => __( 'Approve this order?', 'wc-b2b-print-manager' ),
-					'confirm_reject'  => __( 'Reject this order?', 'wc-b2b-print-manager' ),
-					'reason_prompt'   => __( 'Enter rejection reason (optional):', 'wc-b2b-print-manager' ),
-					'processing'      => __( 'Processing...', 'wc-b2b-print-manager' ),
+				'ajax_url'     => admin_url( 'admin-ajax.php' ),
+				'nonce'        => wp_create_nonce( 'b2b_order_action' ),
+				'member_nonce' => wp_create_nonce( 'b2b_member_management' ),
+				'i18n'         => [
+					'confirm_approve'  => __( 'Approve this order?', 'wc-b2b-print-manager' ),
+					'confirm_reject'   => __( 'Reject this order?', 'wc-b2b-print-manager' ),
+					'reason_prompt'    => __( 'Enter rejection reason (optional):', 'wc-b2b-print-manager' ),
+					'processing'       => __( 'Processing…', 'wc-b2b-print-manager' ),
+					'confirm_remove'   => __( 'Remove this user from the company?', 'wc-b2b-print-manager' ),
+					'creating_user'    => __( 'Creating user…', 'wc-b2b-print-manager' ),
+					'adding_user'      => __( 'Adding user…', 'wc-b2b-print-manager' ),
+					'no_members'       => __( 'No users assigned to this company yet.', 'wc-b2b-print-manager' ),
 				],
 			]
 		);
