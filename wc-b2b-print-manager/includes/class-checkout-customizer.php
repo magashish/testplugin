@@ -28,8 +28,23 @@ class Checkout_Customizer {
 	 * Register checkout hooks — only for B2B users.
 	 */
 	public function __construct() {
-		// Only apply for logged-in B2B users.
+		// Register the B2B gateway unconditionally so WooCommerce can find it
+		// during checkout validation (runs before the 'wp' action).
+		add_filter( 'woocommerce_payment_gateways', [ $this, 'register_b2b_gateway' ] );
+
+		// Only apply B2B checkout overrides for logged-in B2B users.
 		add_action( 'wp', [ $this, 'maybe_activate_b2b_checkout' ] );
+	}
+
+	/**
+	 * Add the B2B Invoice gateway to WooCommerce's gateway list.
+	 *
+	 * @param array $gateways Registered gateway class names.
+	 * @return array
+	 */
+	public function register_b2b_gateway( array $gateways ): array {
+		$gateways[] = B2B_Gateway::class;
+		return $gateways;
 	}
 
 	/**
@@ -61,7 +76,10 @@ class Checkout_Customizer {
 		add_filter( 'woocommerce_checkout_required_field_notice', '__return_false' );
 
 		// ── Payment Gateways ─────────────────────────────────────────────────
-		add_filter( 'woocommerce_available_payment_gateways', '__return_empty_array' );
+		// Replace all gateways with only the B2B Invoice gateway so WooCommerce
+		// checkout validation passes (it checks posted payment_method against
+		// available gateways — an empty list always fails).
+		add_filter( 'woocommerce_available_payment_gateways', [ $this, 'restrict_to_b2b_gateway' ] );
 
 		// ── Order Creation ───────────────────────────────────────────────────
 		// Populate customer details from WP user profile.
@@ -97,6 +115,21 @@ class Checkout_Customizer {
 		];
 
 		return $fields;
+	}
+
+	/**
+	 * Return only the B2B Invoice gateway as the available payment option.
+	 *
+	 * @param array $gateways Available gateway instances keyed by gateway ID.
+	 * @return array
+	 */
+	public function restrict_to_b2b_gateway( array $gateways ): array {
+		$b2b = $gateways['b2b_invoice'] ?? null;
+		if ( $b2b ) {
+			return [ 'b2b_invoice' => $b2b ];
+		}
+		// Fallback: instantiate directly if not yet in the list.
+		return [ 'b2b_invoice' => new B2B_Gateway() ];
 	}
 
 	// -------------------------------------------------------------------------
@@ -177,6 +210,7 @@ class Checkout_Customizer {
 		?>
 		<div id="b2b-place-order">
 			<?php wp_nonce_field( 'woocommerce-process_checkout', 'woocommerce-process-checkout-nonce' ); ?>
+			<input type="hidden" name="payment_method" value="b2b_invoice">
 			<button type="submit" class="button alt wc-b2b-place-order" id="place_order"
 					name="woocommerce_checkout_place_order">
 				<?php echo esc_html( $order_button_text ); ?>

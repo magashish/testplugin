@@ -76,6 +76,7 @@ final class Plugin {
 		require_once $includes . 'class-company-manager.php';
 		require_once $includes . 'class-role-manager.php';
 		require_once $includes . 'class-pricing-engine.php';
+		require_once $includes . 'class-b2b-gateway.php';
 		require_once $includes . 'class-checkout-customizer.php';
 		require_once $includes . 'class-order-controller.php';
 		require_once $includes . 'class-artwork-manager.php';
