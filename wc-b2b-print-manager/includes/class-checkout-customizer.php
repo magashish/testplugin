@@ -75,6 +75,13 @@ class Checkout_Customizer {
 		// Skip field validation since we removed the fields.
 		add_filter( 'woocommerce_checkout_required_field_notice', '__return_false' );
 
+		// ── Shipping ─────────────────────────────────────────────────────────
+		// B2B orders are fulfilled/shipped externally, so skip WooCommerce's
+		// shipping requirement entirely. Without this, removing the address fields
+		// causes "No shipping method has been selected" to block checkout.
+		add_filter( 'woocommerce_cart_needs_shipping', '__return_false' );
+		add_filter( 'woocommerce_cart_needs_shipping_address', '__return_false' );
+
 		// ── Payment Gateways ─────────────────────────────────────────────────
 		// Replace all gateways with only the B2B Invoice gateway so WooCommerce
 		// checkout validation passes (it checks posted payment_method against
