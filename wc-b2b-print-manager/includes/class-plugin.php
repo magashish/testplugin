@@ -91,8 +91,12 @@ final class Plugin {
 		}
 
 		// Public / front-end layer.
-		if ( ! is_admin() ) {
+		// class-public.php must also load during AJAX (is_admin()=true there) so
+		// init_modules() can instantiate B2B_Public and register AJAX handlers.
+		if ( ! is_admin() || wp_doing_ajax() ) {
 			require_once $public . 'class-public.php';
+		}
+		if ( ! is_admin() ) {
 			require_once $public . 'class-dashboard.php';
 		}
 	}
