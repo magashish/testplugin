@@ -493,44 +493,106 @@ class Dashboard {
 	}
 
 	// -------------------------------------------------------------------------
-	// Tab: Team (replaces Agents — shows all members, not just agents)
+	// Tab: Team
 	// -------------------------------------------------------------------------
 
 	private function render_team_tab( int $company_id ): void {
-		$members      = \WC_B2B\Company_Manager::get_company_users( $company_id );
-		$manage_nonce = wp_create_nonce( 'b2b_manage_agents' );
+		$members = \WC_B2B\Company_Manager::get_company_users( $company_id );
 		?>
-		<div class="b2b-team-tab">
+		<div class="b2b-team-tab" data-company="<?php echo esc_attr( $company_id ); ?>">
+
 			<h3><?php esc_html_e( 'Team Members', 'wc-b2b-print-manager' ); ?></h3>
 
 			<?php if ( empty( $members ) ) : ?>
-				<p class="b2b-no-data"><?php esc_html_e( 'No team members yet.', 'wc-b2b-print-manager' ); ?></p>
+				<p class="b2b-no-data b2b-team-empty"><?php esc_html_e( 'No team members yet.', 'wc-b2b-print-manager' ); ?></p>
 			<?php else : ?>
-				<div class="b2b-team-grid">
-					<?php foreach ( $members as $member ) : ?>
-						<div class="b2b-team-card">
-							<div class="b2b-team-avatar">
-								<?php echo get_avatar( $member->ID, 56 ); ?>
-							</div>
-							<div class="b2b-team-info">
-								<strong><?php echo esc_html( $member->display_name ); ?></strong>
-								<span class="b2b-role-chip">
-									<?php echo esc_html( \WC_B2B\Role_Manager::get_role_label( $member->ID ) ); ?>
-								</span>
-								<small><?php echo esc_html( $member->user_email ); ?></small>
-							</div>
-							<div class="b2b-team-actions">
-								<button class="b2b-btn b2b-btn--sm b2b-btn--danger b2b-remove-agent"
-										data-user="<?php echo esc_attr( $member->ID ); ?>"
-										data-nonce="<?php echo esc_attr( $manage_nonce ); ?>">
-									<?php esc_html_e( 'Remove', 'wc-b2b-print-manager' ); ?>
-								</button>
-							</div>
-						</div>
-					<?php endforeach; ?>
-				</div>
+				<table class="b2b-table b2b-team-table">
+					<thead>
+						<tr>
+							<th><?php esc_html_e( 'Name', 'wc-b2b-print-manager' ); ?></th>
+							<th><?php esc_html_e( 'Email', 'wc-b2b-print-manager' ); ?></th>
+							<th><?php esc_html_e( 'Role', 'wc-b2b-print-manager' ); ?></th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody id="b2b-team-tbody">
+						<?php foreach ( $members as $member ) : ?>
+							<tr data-user-id="<?php echo esc_attr( $member->ID ); ?>">
+								<td><?php echo esc_html( $member->display_name ); ?></td>
+								<td><?php echo esc_html( $member->user_email ); ?></td>
+								<td><span class="b2b-role-chip"><?php echo esc_html( \WC_B2B\Role_Manager::get_role_label( $member->ID ) ); ?></span></td>
+								<td>
+									<button class="b2b-btn b2b-btn--sm b2b-btn--danger b2b-remove-team-member"
+											data-user="<?php echo esc_attr( $member->ID ); ?>">
+										<?php esc_html_e( 'Remove', 'wc-b2b-print-manager' ); ?>
+									</button>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
 			<?php endif; ?>
-		</div>
+
+			<div class="b2b-team-forms">
+
+				<div class="b2b-team-form-card">
+					<h4><?php esc_html_e( 'Add Existing Employee', 'wc-b2b-print-manager' ); ?></h4>
+					<p class="b2b-form-desc"><?php esc_html_e( 'Enter the email of an existing account to add them to your team.', 'wc-b2b-print-manager' ); ?></p>
+					<div class="b2b-form-row">
+						<label for="b2b-add-emp-email"><?php esc_html_e( 'Email', 'wc-b2b-print-manager' ); ?></label>
+						<input type="email" id="b2b-add-emp-email" class="b2b-input"
+							   placeholder="<?php esc_attr_e( 'user@example.com', 'wc-b2b-print-manager' ); ?>" />
+					</div>
+					<div class="b2b-form-row">
+						<label for="b2b-add-emp-role"><?php esc_html_e( 'Role', 'wc-b2b-print-manager' ); ?></label>
+						<select id="b2b-add-emp-role" class="b2b-select">
+							<option value="agent"><?php esc_html_e( 'Agent', 'wc-b2b-print-manager' ); ?></option>
+							<option value="company_admin"><?php esc_html_e( 'Company Admin', 'wc-b2b-print-manager' ); ?></option>
+						</select>
+					</div>
+					<button class="b2b-btn b2b-btn--primary" id="b2b-add-emp-btn">
+						<?php esc_html_e( 'Add to Team', 'wc-b2b-print-manager' ); ?>
+					</button>
+					<span class="b2b-form-msg" id="b2b-add-emp-msg"></span>
+				</div>
+
+				<div class="b2b-team-form-card">
+					<h4><?php esc_html_e( 'Create New Employee', 'wc-b2b-print-manager' ); ?></h4>
+					<p class="b2b-form-desc"><?php esc_html_e( 'Create a new account and immediately add them to your team.', 'wc-b2b-print-manager' ); ?></p>
+					<div class="b2b-form-row">
+						<label for="b2b-new-emp-first"><?php esc_html_e( 'First Name', 'wc-b2b-print-manager' ); ?></label>
+						<input type="text" id="b2b-new-emp-first" class="b2b-input" />
+					</div>
+					<div class="b2b-form-row">
+						<label for="b2b-new-emp-last"><?php esc_html_e( 'Last Name', 'wc-b2b-print-manager' ); ?></label>
+						<input type="text" id="b2b-new-emp-last" class="b2b-input" />
+					</div>
+					<div class="b2b-form-row">
+						<label for="b2b-new-emp-email"><?php esc_html_e( 'Email', 'wc-b2b-print-manager' ); ?></label>
+						<input type="email" id="b2b-new-emp-email" class="b2b-input"
+							   placeholder="<?php esc_attr_e( 'user@example.com', 'wc-b2b-print-manager' ); ?>" />
+					</div>
+					<div class="b2b-form-row">
+						<label for="b2b-new-emp-role"><?php esc_html_e( 'Role', 'wc-b2b-print-manager' ); ?></label>
+						<select id="b2b-new-emp-role" class="b2b-select">
+							<option value="agent"><?php esc_html_e( 'Agent', 'wc-b2b-print-manager' ); ?></option>
+							<option value="company_admin"><?php esc_html_e( 'Company Admin', 'wc-b2b-print-manager' ); ?></option>
+						</select>
+					</div>
+					<div class="b2b-form-row">
+						<label>
+							<input type="checkbox" id="b2b-new-emp-send-pass" value="1" checked />
+							<?php esc_html_e( 'Email login credentials to new employee', 'wc-b2b-print-manager' ); ?>
+						</label>
+					</div>
+					<button class="b2b-btn b2b-btn--primary" id="b2b-create-emp-btn">
+						<?php esc_html_e( 'Create &amp; Add to Team', 'wc-b2b-print-manager' ); ?>
+					</button>
+					<span class="b2b-form-msg" id="b2b-create-emp-msg"></span>
+				</div>
+
+			</div><!-- .b2b-team-forms -->
+		</div><!-- .b2b-team-tab -->
 		<?php
 	}
 

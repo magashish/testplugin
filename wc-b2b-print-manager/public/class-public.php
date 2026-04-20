@@ -58,9 +58,12 @@ class B2B_Public {
 		// Front-end assets.
 		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_assets' ] );
 
-		// AJAX: agent management from the front-end dashboard.
+		// AJAX: team management from the front-end dashboard.
 		add_action( 'wp_ajax_b2b_assign_agent', [ $this, 'ajax_assign_agent' ] );
 		add_action( 'wp_ajax_b2b_remove_agent', [ $this, 'ajax_remove_agent' ] );
+		add_action( 'wp_ajax_b2b_frontend_add_employee', [ $this, 'ajax_frontend_add_employee' ] );
+		add_action( 'wp_ajax_b2b_frontend_create_employee', [ $this, 'ajax_frontend_create_employee' ] );
+		add_action( 'wp_ajax_b2b_frontend_remove_employee', [ $this, 'ajax_frontend_remove_employee' ] );
 	}
 
 	// -------------------------------------------------------------------------
@@ -293,12 +296,14 @@ class B2B_Public {
 				'ajax_url'    => admin_url( 'admin-ajax.php' ),
 				'nonce'       => wp_create_nonce( 'b2b_artwork_nonce' ),
 				'order_nonce' => wp_create_nonce( 'b2b_order_action' ),
+				'team_nonce'  => wp_create_nonce( 'b2b_team_management' ),
 				'shop_url'    => get_permalink( wc_get_page_id( 'shop' ) ),
 				'i18n'        => [
-					'confirm_delete' => __( 'Delete this artwork from your library?', 'wc-b2b-print-manager' ),
-					'uploading'      => __( 'Uploading…', 'wc-b2b-print-manager' ),
-					'confirm_reject' => __( 'Reject this order?', 'wc-b2b-print-manager' ),
-					'reason_prompt'  => __( 'Enter a rejection reason (optional):', 'wc-b2b-print-manager' ),
+					'confirm_delete'        => __( 'Delete this artwork from your library?', 'wc-b2b-print-manager' ),
+					'uploading'             => __( 'Uploading…', 'wc-b2b-print-manager' ),
+					'confirm_reject'        => __( 'Reject this order?', 'wc-b2b-print-manager' ),
+					'reason_prompt'         => __( 'Enter a rejection reason (optional):', 'wc-b2b-print-manager' ),
+					'confirm_remove_member' => __( 'Remove this employee from your team?', 'wc-b2b-print-manager' ),
 				],
 			]
 		);
@@ -359,5 +364,155 @@ class B2B_Public {
 
 		delete_user_meta( $user_id, \WC_B2B\Company_Manager::USER_META_COMPANY );
 		wp_send_json_success( [ 'message' => __( 'Agent removed from company.', 'wc-b2b-print-manager' ) ] );
+	}
+
+	// -------------------------------------------------------------------------
+	// AJAX: Frontend Team Management
+	// -------------------------------------------------------------------------
+
+	/**
+	 * AJAX: Add an existing WP user to the company admin's team by email.
+	 *
+	 * POST: email, role, _nonce
+	 */
+	public function ajax_frontend_add_employee(): void {
+		check_ajax_referer( 'b2b_team_management', '_nonce' );
+
+		if ( ! current_user_can( 'manage_company_agents' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Permission denied.', 'wc-b2b-print-manager' ) ] );
+		}
+
+		$email      = sanitize_email( wp_unslash( $_POST['email'] ?? '' ) );
+		$role       = sanitize_text_field( wp_unslash( $_POST['role'] ?? 'agent' ) );
+		$company_id = \WC_B2B\Company_Manager::get_user_company_id();
+
+		if ( ! is_email( $email ) ) {
+			wp_send_json_error( [ 'message' => __( 'Please enter a valid email address.', 'wc-b2b-print-manager' ) ] );
+		}
+
+		$user = get_user_by( 'email', $email );
+		if ( ! $user ) {
+			wp_send_json_error( [ 'message' => __( 'No account found with that email address.', 'wc-b2b-print-manager' ) ] );
+		}
+
+		if ( \WC_B2B\Role_Manager::is_super_admin( $user->ID ) ) {
+			wp_send_json_error( [ 'message' => __( 'Administrators cannot be added to a company.', 'wc-b2b-print-manager' ) ] );
+		}
+
+		$existing = \WC_B2B\Company_Manager::get_user_company_id( $user->ID );
+		if ( $existing && $existing !== $company_id ) {
+			wp_send_json_error( [ 'message' => __( 'This user already belongs to another company.', 'wc-b2b-print-manager' ) ] );
+		}
+
+		if ( in_array( $role, [ 'agent', 'company_admin' ], true ) ) {
+			$user->set_role( $role );
+		}
+
+		\WC_B2B\Company_Manager::assign_user_to_company( $user->ID, $company_id );
+
+		wp_send_json_success(
+			[
+				'message'      => __( 'Employee added to your team.', 'wc-b2b-print-manager' ),
+				'user_id'      => $user->ID,
+				'display_name' => $user->display_name,
+				'email'        => $user->user_email,
+				'role_label'   => \WC_B2B\Role_Manager::get_role_label( $user->ID ),
+			]
+		);
+	}
+
+	/**
+	 * AJAX: Create a new WP user and add them to the company admin's team.
+	 *
+	 * POST: first_name, last_name, email, role, send_password, _nonce
+	 */
+	public function ajax_frontend_create_employee(): void {
+		check_ajax_referer( 'b2b_team_management', '_nonce' );
+
+		if ( ! current_user_can( 'manage_company_agents' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Permission denied.', 'wc-b2b-print-manager' ) ] );
+		}
+
+		$first_name  = sanitize_text_field( wp_unslash( $_POST['first_name'] ?? '' ) );
+		$last_name   = sanitize_text_field( wp_unslash( $_POST['last_name'] ?? '' ) );
+		$email       = sanitize_email( wp_unslash( $_POST['email'] ?? '' ) );
+		$role        = sanitize_text_field( wp_unslash( $_POST['role'] ?? 'agent' ) );
+		$send_pass   = ! empty( $_POST['send_password'] );
+		$company_id  = \WC_B2B\Company_Manager::get_user_company_id();
+
+		if ( ! is_email( $email ) ) {
+			wp_send_json_error( [ 'message' => __( 'Please enter a valid email address.', 'wc-b2b-print-manager' ) ] );
+		}
+
+		if ( email_exists( $email ) ) {
+			wp_send_json_error( [ 'message' => __( 'An account with that email already exists. Use "Add Existing Employee" instead.', 'wc-b2b-print-manager' ) ] );
+		}
+
+		if ( ! in_array( $role, [ 'agent', 'company_admin' ], true ) ) {
+			$role = 'agent';
+		}
+
+		$username = sanitize_user( strstr( $email, '@', true ), true );
+		if ( username_exists( $username ) ) {
+			$username .= '_' . wp_generate_password( 4, false );
+		}
+
+		$user_id = wp_insert_user(
+			[
+				'user_login'   => $username,
+				'user_email'   => $email,
+				'user_pass'    => wp_generate_password( 16, true, false ),
+				'first_name'   => $first_name,
+				'last_name'    => $last_name,
+				'display_name' => trim( "$first_name $last_name" ) ?: $username,
+				'role'         => $role,
+			]
+		);
+
+		if ( is_wp_error( $user_id ) ) {
+			wp_send_json_error( [ 'message' => $user_id->get_error_message() ] );
+		}
+
+		\WC_B2B\Company_Manager::assign_user_to_company( $user_id, $company_id );
+
+		if ( $send_pass ) {
+			wp_new_user_notification( $user_id, null, 'user' );
+		}
+
+		$user = get_user_by( 'id', $user_id );
+
+		wp_send_json_success(
+			[
+				'message'      => __( 'Employee account created and added to your team.', 'wc-b2b-print-manager' ),
+				'user_id'      => $user_id,
+				'display_name' => $user->display_name,
+				'email'        => $user->user_email,
+				'role_label'   => \WC_B2B\Role_Manager::get_role_label( $user_id ),
+			]
+		);
+	}
+
+	/**
+	 * AJAX: Remove an employee from the company admin's team.
+	 *
+	 * POST: user_id, _nonce
+	 */
+	public function ajax_frontend_remove_employee(): void {
+		check_ajax_referer( 'b2b_team_management', '_nonce' );
+
+		if ( ! current_user_can( 'manage_company_agents' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Permission denied.', 'wc-b2b-print-manager' ) ] );
+		}
+
+		$company_id    = \WC_B2B\Company_Manager::get_user_company_id();
+		$user_id       = (int) sanitize_text_field( wp_unslash( $_POST['user_id'] ?? '' ) );
+		$user_company  = \WC_B2B\Company_Manager::get_user_company_id( $user_id );
+
+		if ( $user_company !== $company_id ) {
+			wp_send_json_error( [ 'message' => __( 'This employee does not belong to your company.', 'wc-b2b-print-manager' ) ] );
+		}
+
+		delete_user_meta( $user_id, \WC_B2B\Company_Manager::USER_META_COMPANY );
+		wp_send_json_success( [ 'message' => __( 'Employee removed from team.', 'wc-b2b-print-manager' ) ] );
 	}
 }

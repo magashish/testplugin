@@ -364,49 +364,72 @@
 .b2b-status--cancelled       { background: #fee2e2; color: #991b1b; }
 .b2b-status--on-hold         { background: #f3f4f6; color: #374151; }
 
-/* ── Team grid ───────────────────────────────────────────── */
-.b2b-team-grid {
+/* ── Team tab ────────────────────────────────────────────── */
+.b2b-team-table { margin-bottom: 32px; }
+
+.b2b-team-forms {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 16px;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 8px;
 }
 
-.b2b-team-card {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 14px 16px;
-    background: #fff;
+.b2b-team-form-card {
+    background: #f9fafb;
     border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    transition: box-shadow 0.15s;
+    border-radius: 10px;
+    padding: 22px 24px;
 }
 
-.b2b-team-card:hover {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+.b2b-team-form-card h4 {
+    margin: 0 0 6px;
+    font-size: 15px;
+    color: #111827;
 }
 
-.b2b-team-avatar img {
-    border-radius: 50%;
-    display: block;
+.b2b-form-desc {
+    margin: 0 0 16px;
+    font-size: 13px;
+    color: #6b7280;
 }
 
-.b2b-team-info {
-    flex: 1;
-    min-width: 0;
+.b2b-form-row {
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 4px;
+    margin-bottom: 12px;
 }
 
-.b2b-team-info strong {
+.b2b-form-row label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.b2b-input,
+.b2b-select {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
     font-size: 14px;
-    color: #111827;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    width: 100%;
+    background: #fff;
 }
 
+.b2b-input:focus,
+.b2b-select:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+}
+
+.b2b-form-msg {
+    display: block;
+    margin-top: 8px;
+    font-size: 13px;
+}
+
+/* keep old small selector alive for other uses */
 .b2b-team-info small {
     font-size: 12px;
     color: #9ca3af;
@@ -558,23 +581,7 @@
     text-align: center;
 }
 
-/* ── Assign agent form (team tab) ────────────────────────── */
-.b2b-assign-agent-form {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-top: 10px;
-}
-
-.b2b-assign-agent-form input[type="text"] {
-    padding: 7px 12px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    font-size: 14px;
-    min-width: 260px;
-}
-
+/* legacy — kept for any residual markup */
 .b2b-assign-agent-msg { font-size: 13px; }
 
 /* ── Responsive ──────────────────────────────────────────── */
@@ -604,7 +611,7 @@
         grid-template-columns: repeat(2, 1fr);
     }
 
-    .b2b-team-grid {
+    .b2b-team-forms {
         grid-template-columns: 1fr;
     }
 
@@ -614,10 +621,6 @@
         font-size: 12px;
     }
 
-    .b2b-assign-agent-form input[type="text"] {
-        min-width: unset;
-        width: 100%;
-    }
 }
 
 @media (max-width: 480px) {

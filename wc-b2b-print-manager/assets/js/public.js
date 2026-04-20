@@ -4,7 +4,7 @@
  * Handles:
  *   - Artwork library: upload, delete, display.
  *   - Order approve / reject (company admin front-end).
- *   - Agent management: assign / remove via email lookup.
+ *   - Team management: add existing, create new, remove employee.
  */
 
 /* global wcB2BPublic, jQuery */
@@ -12,9 +12,10 @@
 ( function ( $ ) {
     'use strict';
 
-    var ajax_url    = wcB2BPublic.ajax_url;
+    var ajax_url     = wcB2BPublic.ajax_url;
     var artworkNonce = wcB2BPublic.nonce;
     var orderNonce   = wcB2BPublic.order_nonce;
+    var teamNonce    = wcB2BPublic.team_nonce;
 
     // ── Artwork: upload ──────────────────────────────────────────────────────
 
@@ -171,80 +172,151 @@
         sendFrontendOrderAction( 'b2b_reject_order', $( this ).data( 'order' ), reason );
     } );
 
-    // ── Agent management ─────────────────────────────────────────────────────
+    // ── Team management ──────────────────────────────────────────────────────
 
-    // Remove agent from company.
-    $( document ).on( 'click', '.b2b-remove-agent', function () {
-        var $btn   = $( this );
-        var userId = $btn.data( 'user' );
-        var nonce  = $btn.data( 'nonce' );
+    /**
+     * Show a status message inside a team form.
+     *
+     * @param {jQuery} $el   The message <span> element.
+     * @param {string} msg   Text to display.
+     * @param {bool}   isErr True = red error, false = green success.
+     */
+    function teamMsg( $el, msg, isErr ) {
+        $el.text( msg ).css( 'color', isErr ? '#ef4444' : '#059669' );
+        if ( ! isErr ) {
+            setTimeout( function () { $el.text( '' ); }, 4000 );
+        }
+    }
 
-        if ( ! window.confirm( 'Remove this agent from your company?' ) ) {
-            return;
+    /**
+     * Build and append a new row to the team members table.
+     * Creates the table if only the "empty" placeholder exists.
+     *
+     * @param {{user_id, display_name, email, role_label}} member
+     */
+    function appendTeamRow( member ) {
+        var $tbody = $( '#b2b-team-tbody' );
+
+        if ( ! $tbody.length ) {
+            var table =
+                '<table class="b2b-table b2b-team-table">' +
+                    '<thead><tr>' +
+                        '<th>Name</th><th>Email</th><th>Role</th><th></th>' +
+                    '</tr></thead>' +
+                    '<tbody id="b2b-team-tbody"></tbody>' +
+                '</table>';
+            $( '.b2b-team-empty' ).replaceWith( table );
+            $tbody = $( '#b2b-team-tbody' );
         }
 
+        $tbody.find( '[data-user-id="' + member.user_id + '"]' ).remove();
+
+        $tbody.append(
+            '<tr data-user-id="' + member.user_id + '">' +
+                '<td>' + $( '<span>' ).text( member.display_name ).html() + '</td>' +
+                '<td>' + $( '<span>' ).text( member.email ).html() + '</td>' +
+                '<td><span class="b2b-role-chip">' + $( '<span>' ).text( member.role_label ).html() + '</span></td>' +
+                '<td><button class="b2b-btn b2b-btn--sm b2b-btn--danger b2b-remove-team-member" data-user="' + member.user_id + '">Remove</button></td>' +
+            '</tr>'
+        );
+    }
+
+    // Remove employee.
+    $( document ).on( 'click', '.b2b-remove-team-member', function () {
+        if ( ! window.confirm( wcB2BPublic.i18n.confirm_remove_member ) ) { return; }
+
+        var $btn  = $( this );
+        var $row  = $btn.closest( 'tr' );
+        var userId = $btn.data( 'user' );
+
+        $btn.prop( 'disabled', true );
+
         $.post( ajax_url, {
-            action:  'b2b_remove_agent',
+            action:  'b2b_frontend_remove_employee',
             user_id: userId,
-            _nonce:  nonce,
+            _nonce:  teamNonce,
         } )
             .done( function ( response ) {
                 if ( response.success ) {
-                    $btn.closest( 'tr' ).fadeOut( 300, function () { $( this ).remove(); } );
+                    $row.fadeOut( 300, function () { $( this ).remove(); } );
                 } else {
                     alert( response.data.message || 'Error.' );
+                    $btn.prop( 'disabled', false );
                 }
+            } )
+            .fail( function () {
+                alert( 'Network error.' );
+                $btn.prop( 'disabled', false );
             } );
     } );
 
-    // Assign agent by email.
-    $( document ).on( 'click', '#b2b-assign-agent', function () {
-        var $btn   = $( this );
-        var email  = $( '#b2b-agent-email' ).val().trim();
-        var nonce  = $btn.data( 'nonce' );
-        var $msg   = $( '.b2b-assign-agent-msg' );
+    // Add existing employee.
+    $( document ).on( 'click', '#b2b-add-emp-btn', function () {
+        var $btn  = $( this );
+        var $msg  = $( '#b2b-add-emp-msg' );
+        var email = $( '#b2b-add-emp-email' ).val().trim();
+        var role  = $( '#b2b-add-emp-role' ).val();
 
         if ( ! email ) {
-            $msg.text( 'Please enter an email address.' ).css( 'color', '#ef4444' );
+            teamMsg( $msg, 'Please enter an email address.', true );
             return;
         }
 
         $btn.prop( 'disabled', true );
 
-        // First, look up the user ID by email via a simple AJAX call.
         $.post( ajax_url, {
-            action: 'b2b_lookup_user_by_email',
+            action: 'b2b_frontend_add_employee',
             email:  email,
-            _nonce: nonce,
+            role:   role,
+            _nonce: teamNonce,
         } )
             .done( function ( response ) {
-                if ( ! response.success ) {
-                    $msg.text( response.data.message || 'User not found.' ).css( 'color', '#ef4444' );
-                    $btn.prop( 'disabled', false );
-                    return;
+                if ( response.success ) {
+                    appendTeamRow( response.data );
+                    $( '#b2b-add-emp-email' ).val( '' );
+                    teamMsg( $msg, response.data.message, false );
+                } else {
+                    teamMsg( $msg, response.data.message || 'Error.', true );
                 }
-
-                $.post( ajax_url, {
-                    action:  'b2b_assign_agent',
-                    user_id: response.data.user_id,
-                    _nonce:  nonce,
-                } )
-                    .done( function ( r ) {
-                        if ( r.success ) {
-                            $msg.text( r.data.message ).css( 'color', '#059669' );
-                            $( '#b2b-agent-email' ).val( '' );
-                            // Reload section after short delay.
-                            setTimeout( function () { window.location.reload(); }, 1200 );
-                        } else {
-                            $msg.text( r.data.message || 'Error.' ).css( 'color', '#ef4444' );
-                        }
-                    } )
-                    .always( function () { $btn.prop( 'disabled', false ); } );
             } )
-            .fail( function () {
-                $msg.text( 'Network error.' ).css( 'color', '#ef4444' );
-                $btn.prop( 'disabled', false );
-            } );
+            .fail( function () { teamMsg( $msg, 'Network error.', true ); } )
+            .always( function () { $btn.prop( 'disabled', false ); } );
+    } );
+
+    // Create new employee.
+    $( document ).on( 'click', '#b2b-create-emp-btn', function () {
+        var $btn     = $( this );
+        var $msg     = $( '#b2b-create-emp-msg' );
+        var email    = $( '#b2b-new-emp-email' ).val().trim();
+        var sendPass = $( '#b2b-new-emp-send-pass' ).is( ':checked' ) ? '1' : '';
+
+        if ( ! email ) {
+            teamMsg( $msg, 'Email address is required.', true );
+            return;
+        }
+
+        $btn.prop( 'disabled', true );
+
+        $.post( ajax_url, {
+            action:        'b2b_frontend_create_employee',
+            first_name:    $( '#b2b-new-emp-first' ).val().trim(),
+            last_name:     $( '#b2b-new-emp-last' ).val().trim(),
+            email:         email,
+            role:          $( '#b2b-new-emp-role' ).val(),
+            send_password: sendPass,
+            _nonce:        teamNonce,
+        } )
+            .done( function ( response ) {
+                if ( response.success ) {
+                    appendTeamRow( response.data );
+                    $( '#b2b-new-emp-first, #b2b-new-emp-last, #b2b-new-emp-email' ).val( '' );
+                    teamMsg( $msg, response.data.message, false );
+                } else {
+                    teamMsg( $msg, response.data.message || 'Error.', true );
+                }
+            } )
+            .fail( function () { teamMsg( $msg, 'Network error.', true ); } )
+            .always( function () { $btn.prop( 'disabled', false ); } );
     } );
 
 } )( jQuery );
