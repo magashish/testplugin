@@ -522,7 +522,7 @@ class Dashboard {
 								<td><?php echo esc_html( $member->user_email ); ?></td>
 								<td><span class="b2b-role-chip"><?php echo esc_html( \WC_B2B\Role_Manager::get_role_label( $member->ID ) ); ?></span></td>
 								<td>
-									<button class="b2b-btn b2b-btn--sm b2b-btn--danger b2b-remove-team-member"
+									<button type="button" class="b2b-btn b2b-btn--sm b2b-btn--danger b2b-remove-team-member"
 											data-user="<?php echo esc_attr( $member->ID ); ?>">
 										<?php esc_html_e( 'Remove', 'wc-b2b-print-manager' ); ?>
 									</button>
@@ -550,7 +550,7 @@ class Dashboard {
 							<option value="company_admin"><?php esc_html_e( 'Company Admin', 'wc-b2b-print-manager' ); ?></option>
 						</select>
 					</div>
-					<button class="b2b-btn b2b-btn--primary" id="b2b-add-emp-btn">
+					<button type="button" class="b2b-btn b2b-btn--primary" id="b2b-add-emp-btn">
 						<?php esc_html_e( 'Add to Team', 'wc-b2b-print-manager' ); ?>
 					</button>
 					<span class="b2b-form-msg" id="b2b-add-emp-msg"></span>
@@ -585,7 +585,7 @@ class Dashboard {
 							<?php esc_html_e( 'Email login credentials to new employee', 'wc-b2b-print-manager' ); ?>
 						</label>
 					</div>
-					<button class="b2b-btn b2b-btn--primary" id="b2b-create-emp-btn">
+					<button type="button" class="b2b-btn b2b-btn--primary" id="b2b-create-emp-btn">
 						<?php esc_html_e( 'Create &amp; Add to Team', 'wc-b2b-print-manager' ); ?>
 					</button>
 					<span class="b2b-form-msg" id="b2b-create-emp-msg"></span>

@@ -12,6 +12,10 @@
 ( function ( $ ) {
     'use strict';
 
+    if ( typeof wcB2BPublic === 'undefined' ) {
+        return; // script data not localised — bail silently.
+    }
+
     var ajax_url     = wcB2BPublic.ajax_url;
     var artworkNonce = wcB2BPublic.nonce;
     var orderNonce   = wcB2BPublic.order_nonce;
