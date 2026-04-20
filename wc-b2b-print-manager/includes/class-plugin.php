@@ -119,8 +119,13 @@ final class Plugin {
 		}
 
 		// Front-end modules.
+		// B2B_Public also owns the wp_ajax_* handlers for frontend AJAX actions.
+		// admin-ajax.php sets is_admin()=true, so we must instantiate it during
+		// AJAX requests too — otherwise those actions are never registered.
+		if ( ! is_admin() || wp_doing_ajax() ) {
+			$this->modules['public'] = new Frontend\B2B_Public();
+		}
 		if ( ! is_admin() ) {
-			$this->modules['public']    = new Frontend\B2B_Public();
 			$this->modules['dashboard'] = new Frontend\Dashboard();
 		}
 	}
