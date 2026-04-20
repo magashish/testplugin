@@ -497,7 +497,9 @@ class Dashboard {
 	// -------------------------------------------------------------------------
 
 	private function render_team_tab( int $company_id ): void {
-		$members = \WC_B2B\Company_Manager::get_company_users( $company_id );
+		$members   = \WC_B2B\Company_Manager::get_company_users( $company_id );
+		$nonce     = wp_create_nonce( 'b2b_team_management' );
+		$ajax_url  = admin_url( 'admin-ajax.php' );
 		?>
 		<div class="b2b-team-tab" data-company="<?php echo esc_attr( $company_id ); ?>">
 
@@ -593,6 +595,139 @@ class Dashboard {
 
 			</div><!-- .b2b-team-forms -->
 		</div><!-- .b2b-team-tab -->
+
+		<script>
+		(function() {
+			var ajaxUrl  = <?php echo wp_json_encode( $ajax_url ); ?>;
+			var nonce    = <?php echo wp_json_encode( $nonce ); ?>;
+
+			function teamMsg( elId, msg, isErr ) {
+				var el = document.getElementById( elId );
+				if ( ! el ) return;
+				el.textContent = msg;
+				el.style.color = isErr ? '#ef4444' : '#059669';
+				if ( ! isErr ) setTimeout( function() { el.textContent = ''; }, 4000 );
+			}
+
+			function postAjax( data, done ) {
+				var xhr = new XMLHttpRequest();
+				xhr.open( 'POST', ajaxUrl );
+				xhr.setRequestHeader( 'Content-Type', 'application/x-www-form-urlencoded' );
+				xhr.onload = function() {
+					try {
+						var r = JSON.parse( xhr.responseText );
+						done( r.success, r.success ? r.data : r.data );
+					} catch(e) {
+						done( false, { message: 'Invalid server response.' } );
+					}
+				};
+				xhr.onerror = function() { done( false, { message: 'Network error.' } ); };
+				var pairs = [];
+				for ( var k in data ) {
+					if ( data.hasOwnProperty(k) ) {
+						pairs.push( encodeURIComponent(k) + '=' + encodeURIComponent(data[k]) );
+					}
+				}
+				xhr.send( pairs.join('&') );
+			}
+
+			function appendTeamRow( member ) {
+				var tbody = document.getElementById('b2b-team-tbody');
+				if ( ! tbody ) {
+					// Build table from scratch if only the empty placeholder exists.
+					var placeholder = document.querySelector('.b2b-team-empty');
+					var table = document.createElement('table');
+					table.className = 'b2b-table b2b-team-table';
+					table.innerHTML = '<thead><tr><th>Name</th><th>Email</th><th>Role</th><th></th></tr></thead><tbody id="b2b-team-tbody"></tbody>';
+					if ( placeholder ) { placeholder.parentNode.replaceChild( table, placeholder ); }
+					tbody = document.getElementById('b2b-team-tbody');
+				}
+				// Remove duplicate if re-adding same user.
+				var existing = tbody.querySelector('[data-user-id="' + member.user_id + '"]');
+				if ( existing ) existing.parentNode.removeChild( existing );
+
+				var tr = document.createElement('tr');
+				tr.setAttribute('data-user-id', member.user_id);
+				tr.innerHTML =
+					'<td>' + escHtml(member.display_name) + '</td>' +
+					'<td>' + escHtml(member.email) + '</td>' +
+					'<td><span class="b2b-role-chip">' + escHtml(member.role_label) + '</span></td>' +
+					'<td><button type="button" class="b2b-btn b2b-btn--sm b2b-btn--danger b2b-remove-team-member" data-user="' + member.user_id + '">Remove</button></td>';
+				tbody.appendChild(tr);
+			}
+
+			function escHtml( str ) {
+				return String(str)
+					.replace(/&/g,'&amp;').replace(/</g,'&lt;')
+					.replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+			}
+
+			// Add existing employee.
+			var addBtn = document.getElementById('b2b-add-emp-btn');
+			if ( addBtn ) {
+				addBtn.addEventListener('click', function() {
+					var email = document.getElementById('b2b-add-emp-email').value.trim();
+					var role  = document.getElementById('b2b-add-emp-role').value;
+					if ( ! email ) { teamMsg('b2b-add-emp-msg', 'Please enter an email address.', true); return; }
+					addBtn.disabled = true;
+					postAjax({ action:'b2b_frontend_add_employee', email:email, role:role, _nonce:nonce }, function(ok, data) {
+						if ( ok ) { appendTeamRow(data); document.getElementById('b2b-add-emp-email').value=''; teamMsg('b2b-add-emp-msg', data.message, false); }
+						else { teamMsg('b2b-add-emp-msg', data.message||'Error.', true); }
+						addBtn.disabled = false;
+					});
+				});
+			}
+
+			// Create new employee.
+			var createBtn = document.getElementById('b2b-create-emp-btn');
+			if ( createBtn ) {
+				createBtn.addEventListener('click', function() {
+					var email = document.getElementById('b2b-new-emp-email').value.trim();
+					if ( ! email ) { teamMsg('b2b-create-emp-msg', 'Email address is required.', true); return; }
+					createBtn.disabled = true;
+					var sendPass = document.getElementById('b2b-new-emp-send-pass').checked ? '1' : '';
+					postAjax({
+						action:        'b2b_frontend_create_employee',
+						first_name:    document.getElementById('b2b-new-emp-first').value.trim(),
+						last_name:     document.getElementById('b2b-new-emp-last').value.trim(),
+						email:         email,
+						role:          document.getElementById('b2b-new-emp-role').value,
+						send_password: sendPass,
+						_nonce:        nonce,
+					}, function(ok, data) {
+						if ( ok ) {
+							appendTeamRow(data);
+							document.getElementById('b2b-new-emp-first').value='';
+							document.getElementById('b2b-new-emp-last').value='';
+							document.getElementById('b2b-new-emp-email').value='';
+							teamMsg('b2b-create-emp-msg', data.message, false);
+						} else {
+							teamMsg('b2b-create-emp-msg', data.message||'Error.', true);
+						}
+						createBtn.disabled = false;
+					});
+				});
+			}
+
+			// Remove employee — delegated on tbody.
+			document.addEventListener('click', function(e) {
+				var btn = e.target.closest('.b2b-remove-team-member');
+				if ( ! btn ) return;
+				if ( ! window.confirm('Remove this employee from your team?') ) return;
+				var userId = btn.getAttribute('data-user');
+				btn.disabled = true;
+				postAjax({ action:'b2b_frontend_remove_employee', user_id:userId, _nonce:nonce }, function(ok, data) {
+					if ( ok ) {
+						var row = btn.closest('tr');
+						if ( row ) row.parentNode.removeChild(row);
+					} else {
+						alert( data.message || 'Error.' );
+						btn.disabled = false;
+					}
+				});
+			});
+		})();
+		</script>
 		<?php
 	}
 
