@@ -31,6 +31,10 @@ class Company_Admin {
 		add_filter( 'manage_b2b_company_posts_columns', [ $this, 'add_list_columns' ] );
 		add_action( 'manage_b2b_company_posts_custom_column', [ $this, 'render_list_column' ], 10, 2 );
 
+		// Invoice meta box on company edit screen.
+		add_action( 'add_meta_boxes_b2b_company', [ $this, 'add_invoice_meta_box' ] );
+		add_action( 'wp_ajax_b2b_send_company_invoice', [ $this, 'ajax_send_invoice' ] );
+
 		// Company members meta box + inline user management AJAX.
 		add_action( 'add_meta_boxes_b2b_company', [ $this, 'add_members_meta_box' ] );
 		add_action( 'wp_ajax_b2b_create_company_user', [ $this, 'ajax_create_company_user' ] );
@@ -103,6 +107,134 @@ class Company_Admin {
 				echo esc_html( (string) $count );
 				break;
 		}
+	}
+
+	// -------------------------------------------------------------------------
+	// Invoice Meta Box
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Register the "Send Invoice" meta box in the company edit sidebar.
+	 */
+	public function add_invoice_meta_box(): void {
+		add_meta_box(
+			'b2b_invoice',
+			__( 'Send Monthly Invoice', 'wc-b2b-print-manager' ),
+			[ $this, 'render_invoice_meta_box' ],
+			\WC_B2B\Company_Manager::POST_TYPE,
+			'side',
+			'default'
+		);
+	}
+
+	/**
+	 * Render the invoice meta box.
+	 *
+	 * @param \WP_Post $post Company post.
+	 */
+	public function render_invoice_meta_box( \WP_Post $post ): void {
+		// Default to last month.
+		$last_month_ts = strtotime( 'first day of last month' );
+		$default_month = (int) date( 'n', $last_month_ts );
+		$default_year  = (int) date( 'Y', $last_month_ts );
+
+		$last_sent   = get_post_meta( $post->ID, '_b2b_last_invoice_sent', true );
+		$last_period = get_post_meta( $post->ID, '_b2b_last_invoice_period', true );
+		?>
+		<div id="b2b-invoice-box" data-company="<?php echo esc_attr( $post->ID ); ?>">
+			<?php wp_nonce_field( 'b2b_invoice_nonce', 'b2b_invoice_nonce' ); ?>
+
+			<p style="margin-top:0">
+				<label style="display:block;font-weight:600;margin-bottom:4px"><?php esc_html_e( 'Month', 'wc-b2b-print-manager' ); ?></label>
+				<select id="b2b-invoice-month" style="width:100%">
+					<?php for ( $m = 1; $m <= 12; $m++ ) : ?>
+						<option value="<?php echo esc_attr( $m ); ?>" <?php selected( $default_month, $m ); ?>>
+							<?php echo esc_html( date_i18n( 'F', mktime( 0, 0, 0, $m, 1 ) ) ); ?>
+						</option>
+					<?php endfor; ?>
+				</select>
+			</p>
+
+			<p>
+				<label style="display:block;font-weight:600;margin-bottom:4px"><?php esc_html_e( 'Year', 'wc-b2b-print-manager' ); ?></label>
+				<input type="number" id="b2b-invoice-year" value="<?php echo esc_attr( $default_year ); ?>"
+					   min="2020" max="<?php echo esc_attr( (string) ( $default_year + 1 ) ); ?>"
+					   style="width:100%" />
+			</p>
+
+			<p>
+				<button type="button" class="button button-primary" id="b2b-send-invoice-btn" style="width:100%">
+					<?php esc_html_e( 'Send Invoice', 'wc-b2b-print-manager' ); ?>
+				</button>
+			</p>
+
+			<p id="b2b-invoice-msg" style="margin:4px 0;font-size:13px"></p>
+
+			<?php if ( $last_sent && $last_period ) : ?>
+				<p class="description" style="margin-top:8px;font-size:12px;color:#6b7280">
+					<?php
+					printf(
+						/* translators: 1: date, 2: month+year */
+						esc_html__( 'Last sent: %1$s for %2$s', 'wc-b2b-print-manager' ),
+						esc_html( date_i18n( get_option( 'date_format' ), strtotime( $last_sent ) ) ),
+						esc_html( date_i18n( 'F Y', strtotime( $last_period . '-01' ) ) )
+					);
+					?>
+				</p>
+			<?php endif; ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * AJAX: send a monthly invoice for a company.
+	 *
+	 * POST: company_id, month, year, _nonce (b2b_invoice_nonce)
+	 */
+	public function ajax_send_invoice(): void {
+		if (
+			! isset( $_POST['_nonce'] ) ||
+			! wp_verify_nonce( sanitize_key( $_POST['_nonce'] ), 'b2b_invoice_nonce' )
+		) {
+			wp_send_json_error( [ 'message' => __( 'Security check failed.', 'wc-b2b-print-manager' ) ] );
+		}
+
+		if ( ! current_user_can( 'manage_companies' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Permission denied.', 'wc-b2b-print-manager' ) ] );
+		}
+
+		$company_id = (int) sanitize_text_field( wp_unslash( $_POST['company_id'] ?? '' ) );
+		$month      = (int) sanitize_text_field( wp_unslash( $_POST['month'] ?? '' ) );
+		$year       = (int) sanitize_text_field( wp_unslash( $_POST['year'] ?? '' ) );
+
+		if ( $month < 1 || $month > 12 || $year < 2000 ) {
+			wp_send_json_error( [ 'message' => __( 'Invalid month or year.', 'wc-b2b-print-manager' ) ] );
+		}
+
+		$result = \WC_B2B\Invoice_Manager::send_invoice( $company_id, $month, $year );
+
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( [ 'message' => $result->get_error_message() ] );
+		}
+
+		$period = date_i18n( 'F Y', mktime( 0, 0, 0, $month, 1, $year ) );
+		$orders = \WC_B2B\Invoice_Manager::get_orders_for_period( $company_id, $month, $year );
+
+		wp_send_json_success(
+			[
+				'message' => sprintf(
+					/* translators: 1: order count, 2: period */
+					_n(
+						'Invoice sent — %1$d order for %2$s.',
+						'Invoice sent — %1$d orders for %2$s.',
+						count( $orders ),
+						'wc-b2b-print-manager'
+					),
+					count( $orders ),
+					$period
+				),
+			]
+		);
 	}
 
 	// -------------------------------------------------------------------------

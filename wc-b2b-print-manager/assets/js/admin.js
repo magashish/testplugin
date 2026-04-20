@@ -63,6 +63,108 @@
         sendOrderAction( 'b2b_reject_order', $( this ).data( 'order' ), reason );
     } );
 
+    // ── Invoice sending ──────────────────────────────────────────────────────
+
+    /**
+     * Send an invoice for one company and call back with result.
+     *
+     * @param {number}   companyId
+     * @param {number}   month
+     * @param {number}   year
+     * @param {Function} done  Called with (ok, message).
+     */
+    function sendInvoice( companyId, month, year, done ) {
+        $.post( wcB2BAdmin.ajax_url, {
+            action:     'b2b_send_company_invoice',
+            company_id: companyId,
+            month:      month,
+            year:       year,
+            _nonce:     wcB2BAdmin.invoice_nonce,
+        } )
+        .done( function ( r ) {
+            done( r.success, r.success ? r.data.message : ( r.data.message || 'Error.' ) );
+        } )
+        .fail( function () { done( false, 'Network error.' ); } );
+    }
+
+    // Company edit screen — meta box button.
+    $( document ).on( 'click', '#b2b-send-invoice-btn', function () {
+        var $btn  = $( this );
+        var $msg  = $( '#b2b-invoice-msg' );
+        var cid   = $( '#b2b-invoice-box' ).data( 'company' );
+        var month = $( '#b2b-invoice-month' ).val();
+        var year  = $( '#b2b-invoice-year' ).val();
+
+        $btn.prop( 'disabled', true ).text( wcB2BAdmin.i18n.processing );
+        $msg.text( '' ).css( 'color', '' );
+
+        sendInvoice( cid, month, year, function ( ok, msg ) {
+            $msg.text( msg ).css( 'color', ok ? '#059669' : '#dc2626' );
+            $btn.prop( 'disabled', false ).text( 'Send Invoice' );
+        } );
+    } );
+
+    // Invoices page — per-row send button.
+    $( document ).on( 'click', '.b2b-send-invoice-row', function () {
+        var $btn   = $( this );
+        var $status = $btn.siblings( '.b2b-row-invoice-status' );
+        var cid    = $btn.data( 'company' );
+        var month  = $( '#b2b-bulk-invoice-month' ).val();
+        var year   = $( '#b2b-bulk-invoice-year' ).val();
+
+        $btn.prop( 'disabled', true );
+        $status.text( wcB2BAdmin.i18n.processing ).css( 'color', '' );
+
+        sendInvoice( cid, month, year, function ( ok, msg ) {
+            $status.text( msg ).css( 'color', ok ? '#059669' : '#dc2626' );
+            $btn.prop( 'disabled', false );
+        } );
+    } );
+
+    // Invoices page — "Send to All" button.
+    $( document ).on( 'click', '#b2b-send-all-invoices', function () {
+        var $btn    = $( this );
+        var $status = $( '#b2b-bulk-invoice-status' );
+        var month   = $( '#b2b-bulk-invoice-month' ).val();
+        var year    = $( '#b2b-bulk-invoice-year' ).val();
+        var rows    = $( '.b2b-send-invoice-row' );
+
+        if ( ! rows.length ) { return; }
+
+        $btn.prop( 'disabled', true );
+        $status.text( '0 / ' + rows.length + ' sent…' ).css( 'color', '' );
+
+        var sent = 0;
+        var errors = 0;
+
+        function next( idx ) {
+            if ( idx >= rows.length ) {
+                var msg = sent + ' sent';
+                if ( errors ) { msg += ', ' + errors + ' failed'; }
+                $status.text( msg ).css( 'color', errors ? '#dc2626' : '#059669' );
+                $btn.prop( 'disabled', false );
+                return;
+            }
+
+            var $row = $( rows[ idx ] );
+            var cid  = $row.data( 'company' );
+            var $rowStatus = $row.siblings( '.b2b-row-invoice-status' );
+
+            $row.prop( 'disabled', true );
+            $rowStatus.text( wcB2BAdmin.i18n.processing ).css( 'color', '' );
+
+            sendInvoice( cid, month, year, function ( ok, msg ) {
+                $rowStatus.text( msg ).css( 'color', ok ? '#059669' : '#dc2626' );
+                $row.prop( 'disabled', false );
+                ok ? sent++ : errors++;
+                $status.text( ( sent + errors ) + ' / ' + rows.length + '…' );
+                next( idx + 1 );
+            } );
+        }
+
+        next( 0 );
+    } );
+
     // ── Company Members Panel ─────────────────────────────────────────────────
 
     var $membersPanel = $( '.b2b-members-panel' );
